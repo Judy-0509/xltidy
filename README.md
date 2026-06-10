@@ -61,9 +61,11 @@ Designed for **on-prem / in-house** use (data never leaves the building), so it 
 
 The LLM only ever produces the `TemplateSpec` (coordinates and structure). Deterministic code reads the real values. · LLM은 `TemplateSpec`(좌표·구조)만 만들고, 실제 값은 결정론 코드가 읽습니다.
 
+> All commands below are **PowerShell** (Windows). · 아래 모든 명령은 **PowerShell**(Windows) 기준입니다.
+
 ## Install · 설치
 
-```bash
+```powershell
 python -m pip install -e ".[dev]"
 # + Parquet output:        python -m pip install -e ".[dev,parquet]"
 # + in-house Qwen backend: python -m pip install -e ".[dev,parquet,qwen]"
@@ -71,9 +73,39 @@ python -m pip install -e ".[dev]"
 
 Requirements · 요구사항: **Python 3.10+**, and for COM features (`sheets` / `extract` / pivot in `apply`·`consolidate`) a **Windows machine with Microsoft Excel installed**.
 
+## In-house setup · 사내 설치 (PowerShell)
+
+```powershell
+# 1) Clone the private repo (you must be authenticated to GitHub) · private 레포 클론
+git clone https://github.com/Judy-0509/xltidy.git
+Set-Location xltidy
+
+# 2) (recommended) isolated environment · 가상환경 권장
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# 3) Install · 설치 (Parquet + in-house Qwen backend 포함)
+python -m pip install -e ".[dev,parquet,qwen]"
+
+# 4) Point at your in-house Qwen (OpenAI-compatible) · 사내 Qwen 연결
+#    this session only · 이 세션만:
+$env:XLTIDY_QWEN_BASE_URL = "http://qwen.your-company.internal/v1"
+$env:XLTIDY_QWEN_API_KEY  = "your-internal-key"
+$env:XLTIDY_QWEN_MODEL    = "qwen2.5-72b-instruct"
+#    persist for your user (new shells) · 사용자 환경변수로 영구 저장:
+[Environment]::SetEnvironmentVariable("XLTIDY_QWEN_BASE_URL", "http://qwen.your-company.internal/v1", "User")
+[Environment]::SetEnvironmentVariable("XLTIDY_QWEN_MODEL", "qwen2.5-72b-instruct", "User")
+
+# 5) Smoke-test the install · 설치 점검
+python -m pytest -m "not excel" -q     # core, no Excel
+python -m pytest -m excel -q           # COM (needs desktop Excel)
+```
+
+> Using it through an **opencode/Claude agent** instead? You don't need the `qwen` backend or the env vars — the agent's own LLM authors the spec. Just install (step 3 without `,qwen`) and register the skill (see below). · opencode/Claude 에이전트로 쓰면 `qwen` 백엔드·환경변수가 필요 없습니다(에이전트 LLM이 스펙 작성). 설치 후 스킬만 등록하세요.
+
 ## Quickstart · 빠른 시작
 
-```bash
+```powershell
 # 0) Choose sheets — lists ALL sheets incl. hidden / very-hidden
 #    시트 선택 — 숨김·very_hidden 포함 전체 시트 확인
 xltidy sheets report_2024Q1.xlsx
@@ -99,10 +131,20 @@ xltidy consolidate specs/employment.yaml "data/2024*.xlsx" --out-dir merged --fo
 
 ## Use as an opencode / Claude skill · 스킬로 사용
 
-Copy `skills/excel-to-db/` into your agent's skills path · 에이전트 skills 경로로 복사:
+Copy the skill into your agent's skills path · 에이전트 skills 경로로 복사 (PowerShell):
 
-- **opencode**: `~/.config/opencode/skills/xltidy/`
-- **Claude**: `.claude/skills/`
+```powershell
+# opencode (global) · opencode 전역
+$dst = "$env:USERPROFILE\.config\opencode\skills\xltidy"
+New-Item -ItemType Directory -Force -Path $dst | Out-Null
+Copy-Item ".\skills\excel-to-db\SKILL.md" "$dst\SKILL.md" -Force
+
+# Claude (per-project) · Claude 프로젝트별
+New-Item -ItemType Directory -Force -Path ".\.claude\skills\xltidy" | Out-Null
+Copy-Item ".\skills\excel-to-db\SKILL.md" ".\.claude\skills\xltidy\SKILL.md" -Force
+```
+
+Then in opencode the agent calls `skill({ name: "xltidy" })`. · 이후 opencode에서 에이전트가 `skill({ name: "xltidy" })`로 호출.
 
 The skill drives the whole workflow (sheet selection → spec authoring → apply → consolidate). Since the agent already runs on an LLM (e.g., your in-house Qwen), no separate Qwen API call is needed. · 스킬이 전체 워크플로를 수행하며, 에이전트 자체가 LLM(사내 Qwen 등) 위에서 돌므로 별도 Qwen 호출이 필요 없습니다.
 
@@ -114,7 +156,7 @@ The skill drives the whole workflow (sheet selection → spec authoring → appl
 
 ## Testing · 테스트
 
-```bash
+```powershell
 python -m pytest -m "not excel"   # core (pure) — no Excel needed · 코어, Excel 불필요
 python -m pytest -m excel         # COM (extract/pivot/e2e) — desktop Excel required · 데스크톱 Excel 필요
 ```
