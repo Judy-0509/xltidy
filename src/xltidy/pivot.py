@@ -17,7 +17,6 @@ import xlwings as xw
 #   - subtotal:   fewer row/col items than the field counts  -> skipped
 #   - grand total: RowItems.Count == 0 AND ColumnItems.Count == 0 -> captured, skipped
 # Label extraction still uses PivotCell.RowItems/.ColumnItems per the contract.
-_XL_DATA = 0  # xlPivotCellValue (informational; see note above)
 
 
 def extract_pivot(path: str, sheet: str | int, pivot_name: str | None = None):
