@@ -1,5 +1,5 @@
 import pandas as pd
-from xltidy.dbio import write_tables
+from moa.dbio import write_tables
 
 
 def test_write_tables_csv(tmp_path):

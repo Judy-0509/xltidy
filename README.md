@@ -19,7 +19,7 @@
 </p>
 
 <p align="center"><sub><b>Moa</b> — from the Korean verb "to gather": gather scattered Excel into one clean DB.<br>
-CLI command is <code>moa</code> (the legacy <code>xltidy</code> command still works; the package imports as <code>xltidy</code>).</sub></p>
+CLI command is <code>moa</code> (the legacy <code>xltidy</code> command still works; the package imports as <code>moa</code>).</sub></p>
 
 <p align="center"><sub>🚧 <b>Status:</b> early stage (v0.1.x). The CLI works end-to-end today; the API may still change. Issues &amp; feedback welcome.</sub></p>
 
@@ -94,12 +94,12 @@ python -m pip install -e ".[dev,parquet,qwen]"
 
 # 4) Point at your in-house Qwen (OpenAI-compatible)
 #    this session only:
-$env:XLTIDY_QWEN_BASE_URL = "http://qwen.example.internal/v1"
-$env:XLTIDY_QWEN_API_KEY  = "your-internal-key"
-$env:XLTIDY_QWEN_MODEL    = "qwen2.5-72b-instruct"
+$env:MOA_QWEN_BASE_URL = "http://qwen.example.internal/v1"
+$env:MOA_QWEN_API_KEY  = "your-internal-key"
+$env:MOA_QWEN_MODEL    = "qwen2.5-72b-instruct"
 #    persist for your user (new shells):
-[Environment]::SetEnvironmentVariable("XLTIDY_QWEN_BASE_URL", "http://qwen.example.internal/v1", "User")
-[Environment]::SetEnvironmentVariable("XLTIDY_QWEN_MODEL", "qwen2.5-72b-instruct", "User")
+[Environment]::SetEnvironmentVariable("MOA_QWEN_BASE_URL", "http://qwen.example.internal/v1", "User")
+[Environment]::SetEnvironmentVariable("MOA_QWEN_MODEL", "qwen2.5-72b-instruct", "User")
 
 # 5) Smoke-test the install
 python -m pytest -m "not excel" -q     # core, no Excel
@@ -170,7 +170,7 @@ The skill drives the whole workflow (sheet selection → spec authoring → appl
 ## Constraints
 
 - **xlwings only.** `openpyxl`, `pandas.read_excel`/`ExcelFile` are hard-banned and enforced by `tests/test_no_openpyxl.py`.
-- Unattended inference uses the in-house **Qwen** backend (`--backend qwen`), configured via `XLTIDY_QWEN_BASE_URL`, `XLTIDY_QWEN_API_KEY`, `XLTIDY_QWEN_MODEL`.
+- Unattended inference uses the in-house **Qwen** backend (`--backend qwen`), configured via `MOA_QWEN_BASE_URL`, `MOA_QWEN_API_KEY`, `MOA_QWEN_MODEL` (legacy `XLTIDY_*` names still work).
 - Pivot extraction clears all filters and supports a **single data field** in v1 (multi-field pivots warn and use the first).
 - Merge detection covers label/header anchors (text/date); a merge anchored by a **bare number**, and **merged numeric body** cells, are not supported (value cells are read per-cell).
 
@@ -184,7 +184,7 @@ python -m pytest -m excel         # COM (extract/pivot/e2e) — desktop Excel re
 ## Project structure
 
 ```
-src/xltidy/                        (package imports as `xltidy`; CLI command is `moa`)
+src/moa/                        (package imports as `moa`; CLI command is `moa`)
   coords.py       A1 <-> (row, col)
   models.py       Cell, MergedRange, CellGrid (value_filled = merge->anchor), SheetInfo
   encode.py       CellGrid -> compact text for the LLM (numbers masked as #num; large sheets head/tail sampled)
@@ -194,7 +194,7 @@ src/xltidy/                        (package imports as `xltidy`; CLI command is 
   apply.py        apply_table / finalize_pivot / apply_session / apply_workbook
   dbio.py         write_tables -> per-workbook folder of CSV/Parquet
   consolidate.py  detect_drift (sheet/column/region) + period-collision guard + consolidate
-  config.py       XLTIDY_QWEN_* env
+  config.py       MOA_QWEN_* env
   infer.py        agent prompt builder + optional Qwen backend
   _xl.py          headless Excel lifecycle: new_app / quit_app (kill backstop) / open_book
   session.py      ExcelSession (one open workbook, per-sheet grid cache) + FnSession adapter

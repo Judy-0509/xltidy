@@ -1,4 +1,4 @@
-from xltidy.models import Cell, CellGrid, MergedRange, SheetInfo
+from moa.models import Cell, CellGrid, MergedRange, SheetInfo
 
 
 def test_at_and_roundtrip():

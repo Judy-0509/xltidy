@@ -1,5 +1,5 @@
 from typer.testing import CliRunner
-from xltidy.cli import app
+from moa.cli import app
 from tests.fixtures import sample_grid
 
 runner = CliRunner()
@@ -13,14 +13,14 @@ def test_encode_cmd(tmp_path):
 
 def test_sample_spec_cmd_roundtrips():
     import yaml
-    from xltidy.spec import TemplateSpec
+    from moa.spec import TemplateSpec
     r = runner.invoke(app, ["sample-spec"])
     assert r.exit_code == 0, r.stdout
     TemplateSpec.model_validate(yaml.safe_load(r.stdout))  # valid skeleton to copy
 
 
 def test_infer_accepts_positional_file(tmp_path):
-    # regression: `xltidy infer <path>` (positional) must not error with
+    # regression: `moa infer <path>` (positional) must not error with
     # "Got unexpected extra argument"; --grid still takes precedence.
     gp = tmp_path / "grid.json"; gp.write_text(sample_grid().model_dump_json(), encoding="utf-8")
     r = runner.invoke(app, ["infer", "Some Workbook, April 2026.xlsx",
@@ -31,7 +31,7 @@ def test_infer_accepts_positional_file(tmp_path):
 
 
 def test_apply_cmd_writes_folder(tmp_path):
-    from xltidy.spec import TemplateSpec, sample_spec_dict
+    from moa.spec import TemplateSpec, sample_spec_dict
     gp = tmp_path / "grid.json"; gp.write_text(sample_grid().model_dump_json(), encoding="utf-8")
     sp = tmp_path / "spec.yaml"; TemplateSpec.model_validate(sample_spec_dict()).to_yaml(sp)
     out = tmp_path / "db"
@@ -44,7 +44,7 @@ def test_apply_cmd_writes_folder(tmp_path):
 
 def test_apply_no_verify_turns_it_off(tmp_path):
     # --verify is default-on; --no-verify must parse and still write the folder.
-    from xltidy.spec import TemplateSpec, sample_spec_dict
+    from moa.spec import TemplateSpec, sample_spec_dict
     gp = tmp_path / "grid.json"; gp.write_text(sample_grid().model_dump_json(), encoding="utf-8")
     sp = tmp_path / "spec.yaml"; TemplateSpec.model_validate(sample_spec_dict()).to_yaml(sp)
     out = tmp_path / "db2"

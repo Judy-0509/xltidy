@@ -1,7 +1,7 @@
 from tests.fixtures import sample_grid
-from xltidy.apply import apply_table
-from xltidy.spec import TemplateSpec, sample_spec_dict
-from xltidy.verify import verify_table
+from moa.apply import apply_table
+from moa.spec import TemplateSpec, sample_spec_dict
+from moa.verify import verify_table
 
 
 def _table():
@@ -31,7 +31,7 @@ def test_verify_flags_value_mismatch():
 
 
 def _dup_grid_and_table():
-    from xltidy.models import Cell, CellGrid
+    from moa.models import Cell, CellGrid
     grid = CellGrid(sheet="데이터", n_rows=5, n_cols=3, cells=[
         Cell(row=2, col=2, value="지역"), Cell(row=2, col=3, value="값"),
         Cell(row=3, col=2, value="서울"), Cell(row=3, col=3, value=10.0),

@@ -1,4 +1,4 @@
-from xltidy.spec import TemplateSpec, sample_spec_dict
+from moa.spec import TemplateSpec, sample_spec_dict
 from tests.fixtures import sample_grid
 
 

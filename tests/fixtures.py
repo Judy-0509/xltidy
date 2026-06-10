@@ -1,6 +1,6 @@
 import pandas as pd
 
-from xltidy.models import Cell, CellGrid
+from moa.models import Cell, CellGrid
 
 
 def sample_grid() -> CellGrid:

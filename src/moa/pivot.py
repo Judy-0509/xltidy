@@ -110,7 +110,7 @@ def pivot_from_sheet(wb, sheet: str | int, pivot_name: str | None = None,
     if clear_filters:
         failures = _clear_all_filters(pt, wb)
         if failures:
-            print(f"[xltidy] WARNING: pivot {pivot_name or 1} on sheet {sheet!r}: could not "
+            print(f"[moa] WARNING: pivot {pivot_name or 1} on sheet {sheet!r}: could not "
                   f"clear {len(failures)} filter(s) -> result may be a FILTERED subset, not "
                   f"all rows: {'; '.join(failures[:5])}")
 
@@ -119,7 +119,7 @@ def pivot_from_sheet(wb, sheet: str | int, pivot_name: str | None = None,
                    for i in range(pt.DataFields.Count)]
     if pt.DataFields.Count > 1:
         # v1: 단일 데이터 필드만. 다중은 명시적으로 알리고 첫 필드만.
-        print(f"[xltidy] WARNING: pivot has {pt.DataFields.Count} data fields "
+        print(f"[moa] WARNING: pivot has {pt.DataFields.Count} data fields "
               f"{data_fields}; v1 uses the first only.")
 
     n_row_fields = int(pt.RowFields.Count)
