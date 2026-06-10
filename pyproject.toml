@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xltidy"
+version = "0.1.0"
+description = "xlwings-only Excel -> tidy per-workbook folder of tables, with reusable TemplateSpec"
+requires-python = ">=3.10"
+dependencies = ["xlwings>=0.31", "pandas>=2.0", "pydantic>=2.5", "pyyaml>=6.0", "typer>=0.12", "rich>=13.0"]
+
+[project.optional-dependencies]
+parquet = ["pyarrow>=15.0"]
+qwen = ["openai>=1.40"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+xltidy = "xltidy.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xltidy"]
+
+[tool.pytest.ini_options]
+markers = ["excel: requires a live Excel install via xlwings (Windows desktop)"]
+testpaths = ["tests"]
+addopts = "-ra"
