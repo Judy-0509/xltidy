@@ -16,8 +16,10 @@ xlwings로만 복잡한 Excel을 읽어 워크북 1개를 출력 폴더 1개(시
    - 표 시트: `xltidy infer <파일> --sheet <시트> --backend agent` → 인코딩을 읽고 `specs/<id>.yaml`의 해당 sheets[] 항목을 작성. 다중헤더는 값열마다 column_semantics 한 항목으로 평탄화. 숫자는 #num이니 좌표·구조만.
    - 피벗 시트: 추론하지 말고 `kind: pivot` + `pivot_name`(없으면 null) + `period`만 적는다.
 2. **검증**: `xltidy spec-validate specs/<id>.yaml --against <파일> --sheet <시트>`
-3. **단일 적용**: `xltidy apply specs/<id>.yaml --file <파일> --out-dir out/<period> --format csv` → reconcile ✗면 스펙(소계/영역/피벗명) 수정.
-4. **버전 통합**: `xltidy consolidate specs/<id>.yaml "data/2024*.xlsx" --out-dir merged --format parquet --on-drift stop` → 드리프트(선택 시트 누락/헤더 변경 포함) 보고된 파일은 적재 안 됨 → 양식 변경이면 스펙 version↑ 후 재작성.
+3. **단일 적용(검증 포함)**: `xltidy apply specs/<id>.yaml --file <파일> --out-dir out/<name> --format csv --verify --sample 100` → reconcile/verify ✗면 스펙(소계/영역/피벗명) 수정.
+4. **★ 다른 버전 물어보기**: 사용자에게 *"이 엑셀의 다른 기간(월/분기) 버전 파일이 더 있나요?"* 를 묻는다.
+   - **있으면**: 파일 경로/글롭을 받아 `xltidy consolidate specs/<id>.yaml "data/2024*.xlsx" --out-dir merged --format csv --on-drift stop --verify --sample 100` → 모든 버전을 `period` 축으로 누적한 **하나의 DB**. 드리프트 파일은 제외(양식 변경이면 version↑).
+   - **없으면**: 3단계 폴더가 최종 DB. 끝.
 
 ## 주의
 - openpyxl/pd.read_excel 절대 제안 금지(정책 하드 금지).
