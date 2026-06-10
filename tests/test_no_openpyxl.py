@@ -2,14 +2,14 @@ import importlib
 import sys
 
 
-def test_importing_xltidy_does_not_load_openpyxl():
+def test_importing_moa_does_not_load_openpyxl():
     for mod in [m for m in sys.modules if m == "openpyxl" or m.startswith("openpyxl.")]:
         del sys.modules[mod]
-    importlib.import_module("xltidy")
+    importlib.import_module("moa")
     for name in ["coords", "models", "encode", "spec", "reconcile", "apply",
                  "consolidate", "dbio", "config", "infer"]:
         try:
-            importlib.import_module(f"xltidy.{name}")
+            importlib.import_module(f"moa.{name}")
         except ModuleNotFoundError:
             pass
     assert "openpyxl" not in sys.modules, "openpyxl is a banned dependency (hard policy)"
@@ -17,7 +17,7 @@ def test_importing_xltidy_does_not_load_openpyxl():
 
 def test_no_banned_excel_io_in_source():
     import pathlib
-    src = pathlib.Path(__file__).resolve().parents[1] / "src" / "xltidy"
+    src = pathlib.Path(__file__).resolve().parents[1] / "src" / "moa"
     offenders = []
     for p in src.rglob("*.py"):
         text = p.read_text(encoding="utf-8")

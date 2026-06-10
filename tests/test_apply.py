@@ -1,7 +1,7 @@
 from tests.fixtures import sample_grid, sample_pivot_raw
-from xltidy.models import Cell, CellGrid, MergedRange
-from xltidy.spec import TemplateSpec, sample_spec_dict
-from xltidy.apply import apply_table, finalize_pivot, resolve_period, apply_workbook
+from moa.models import Cell, CellGrid, MergedRange
+from moa.spec import TemplateSpec, sample_spec_dict
+from moa.apply import apply_table, finalize_pivot, resolve_period, apply_workbook
 
 
 def _table():

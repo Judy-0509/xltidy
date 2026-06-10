@@ -1,7 +1,7 @@
 import json
 from tests.fixtures import sample_grid
-from xltidy.encode import encode
-from xltidy.infer import build_agent_prompt, infer_with_qwen
+from moa.encode import encode
+from moa.infer import build_agent_prompt, infer_with_qwen
 
 
 def test_agent_prompt():

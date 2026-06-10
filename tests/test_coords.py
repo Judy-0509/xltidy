@@ -1,4 +1,4 @@
-from xltidy.coords import col_to_idx, idx_to_col, a1_to_rc, rc_to_a1, parse_range
+from moa.coords import col_to_idx, idx_to_col, a1_to_rc, rc_to_a1, parse_range
 
 
 def test_roundtrip():

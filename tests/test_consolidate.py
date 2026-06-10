@@ -1,8 +1,8 @@
 import pandas as pd
 from tests.fixtures import sample_grid, sample_pivot_raw
-from xltidy.models import Cell
-from xltidy.spec import TemplateSpec, sample_spec_dict
-from xltidy.consolidate import detect_drift, consolidate
+from moa.models import Cell
+from moa.spec import TemplateSpec, sample_spec_dict
+from moa.consolidate import detect_drift, consolidate
 
 
 def _spec():

@@ -4,10 +4,10 @@ xw = pytest.importorskip("xlwings")
 
 @pytest.mark.excel
 def test_workbook_table_and_pivot(tmp_path):
-    from xltidy.extract import extract, list_sheets
-    from xltidy.pivot import extract_pivot
-    from xltidy.apply import apply_workbook
-    from xltidy.spec import TemplateSpec
+    from moa.extract import extract, list_sheets
+    from moa.pivot import extract_pivot
+    from moa.apply import apply_workbook
+    from moa.spec import TemplateSpec
 
     path = str(tmp_path / "survey_2024Q1.xlsx")
     app = xw.App(visible=False, add_book=False)

@@ -1,6 +1,6 @@
 from tests.fixtures import sample_grid
-from xltidy.encode import encode
-from xltidy.models import Cell, CellGrid
+from moa.encode import encode
+from moa.models import Cell, CellGrid
 
 
 def test_encode():

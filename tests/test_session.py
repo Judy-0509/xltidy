@@ -1,4 +1,4 @@
-import xltidy.session as S
+import moa.session as S
 
 
 def test_fnsession_routes_calls_to_injected_fns():

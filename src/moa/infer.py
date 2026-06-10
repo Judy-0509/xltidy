@@ -7,7 +7,7 @@ from .spec import TemplateSpec
 
 _INSTRUCTION = dedent(
     """
-    너는 Excel 시트 인코딩을 보고 xltidy `TemplateSpec`(JSON)을 작성한다.
+    너는 Excel 시트 인코딩을 보고 moa `TemplateSpec`(JSON)을 작성한다.
     - 표는 region/header/index_columns/value_block/column_semantics(source/name/source_text)/
       unpivot/period/totals 를 채운다. 다중헤더는 값열마다 column_semantics 한 항목으로 평탄화한다.
     - **실제 값(숫자)을 전사하지 마라.** 좌표·구조만(값은 #num 으로 가려져 있다).

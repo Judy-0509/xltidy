@@ -1,5 +1,5 @@
-import xltidy
+import moa
 
 
 def test_package_imports():
-    assert xltidy.__version__ == "0.1.7"
+    assert moa.__version__ == "0.1.7"

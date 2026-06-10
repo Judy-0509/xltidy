@@ -4,7 +4,7 @@ xw = pytest.importorskip("xlwings")
 
 @pytest.mark.excel
 def test_list_sheets_includes_hidden(tmp_path):
-    from xltidy.extract import list_sheets
+    from moa.extract import list_sheets
     path = tmp_path / "t.xlsx"
     app = xw.App(visible=False, add_book=False)
     try:
@@ -24,7 +24,7 @@ def test_list_sheets_includes_hidden(tmp_path):
 
 @pytest.mark.excel
 def test_extract_values(tmp_path):
-    from xltidy.extract import extract
+    from moa.extract import extract
     path = tmp_path / "t.xlsx"
     app = xw.App(visible=False, add_book=False)
     try:

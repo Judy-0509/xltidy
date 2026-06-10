@@ -1,4 +1,4 @@
-from xltidy._xl import quit_app
+from moa._xl import quit_app
 
 
 class _FakeApp:

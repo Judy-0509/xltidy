@@ -1,7 +1,7 @@
 from tests.fixtures import sample_grid
-from xltidy.models import Cell
-from xltidy.spec import TemplateSpec, sample_spec_dict
-from xltidy.reconcile import reconcile_table, reconcile_pivot, ReconcileReport
+from moa.models import Cell
+from moa.spec import TemplateSpec, sample_spec_dict
+from moa.reconcile import reconcile_table, reconcile_pivot, ReconcileReport
 
 
 def _table():

@@ -34,7 +34,7 @@ def _hide_row_item(app, path, field, item):
 
 @pytest.mark.excel
 def test_extract_pivot_long_and_grand_total(tmp_path):
-    from xltidy.pivot import extract_pivot
+    from moa.pivot import extract_pivot
     path = str(tmp_path / "p.xlsx")
     app = xw.App(visible=False, add_book=False)
     try:
@@ -50,8 +50,8 @@ def test_extract_pivot_long_and_grand_total(tmp_path):
 @pytest.mark.excel
 def test_apply_workbook_real_single_open(tmp_path):
     # 실제 open-once 경로(open_excel_session -> ExcelSession.grid -> apply_session) 검증
-    from xltidy.apply import apply_workbook
-    from xltidy.spec import TemplateSpec, sample_spec_dict
+    from moa.apply import apply_workbook
+    from moa.spec import TemplateSpec, sample_spec_dict
     path = str(tmp_path / "tbl.xlsx")
     app = xw.App(visible=False, add_book=False)
     try:
@@ -75,7 +75,7 @@ def test_apply_workbook_real_single_open(tmp_path):
 def test_extract_pivot_clears_filters_to_get_all_data(tmp_path):
     # 핵심 검증: 피벗에 필터(서울 숨김)가 걸려 있어도 기본(clear_filters=True)이면
     # 전체 데이터를 돌려주고, clear_filters=False면 보이는(필터된) 부분만 준다.
-    from xltidy.pivot import extract_pivot
+    from moa.pivot import extract_pivot
     path = str(tmp_path / "pf.xlsx")
     app = xw.App(visible=False, add_book=False)
     try:

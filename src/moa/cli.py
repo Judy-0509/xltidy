@@ -66,7 +66,7 @@ def infer(file: str = typer.Argument(None), grid: str = typer.Option(None), shee
     fname = file or grid or ""
     if backend == "agent":
         typer.echo(build_agent_prompt(enc, filename=fname))
-        rprint("[yellow]# 위 인코딩으로 spec.yaml 작성(골격: `xltidy sample-spec`) 후 `xltidy spec-validate`로 검증. 피벗 시트는 kind:pivot.[/]")
+        rprint("[yellow]# 위 인코딩으로 spec.yaml 작성(골격: `moa sample-spec`) 후 `moa spec-validate`로 검증. 피벗 시트는 kind:pivot.[/]")
     elif backend == "qwen":
         from .config import load_settings
         from .infer import infer_with_qwen
