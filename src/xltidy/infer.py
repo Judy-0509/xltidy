@@ -11,6 +11,8 @@ _INSTRUCTION = dedent(
     - 표는 region/header/index_columns/value_block/column_semantics(source/name/source_text)/
       unpivot/period/totals 를 채운다. 다중헤더는 값열마다 column_semantics 한 항목으로 평탄화한다.
     - **실제 값(숫자)을 전사하지 마라.** 좌표·구조만(값은 #num 으로 가려져 있다).
+    - 인코딩에 `DATA ROWS: a..b` 와 `... omitted ...` 가 있으면 표가 그만큼 길다는 뜻이다.
+      region 끝 행은 **보이는 마지막 행이 아니라 b**(DATA ROWS의 끝)로 잡아라.
     - **피벗 테이블 시트는 추론하지 말고** kind:pivot + pivot_name(없으면 null) + period 만 적는다.
     - 출력은 유효한 JSON 하나.
     파일명: {filename}
