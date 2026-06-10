@@ -132,17 +132,17 @@ xltidy consolidate specs/employment.yaml "data/2024*.xlsx" --out-dir merged --fo
 
 ## Use as an opencode / Claude skill · 스킬로 사용
 
-Copy the skill into your agent's skills path · 에이전트 skills 경로로 복사 (PowerShell):
+The skill ships at [`.opencode/skills/xltidy/SKILL.md`](.opencode/skills/xltidy/SKILL.md) (folder name = skill `name`), so opening this repo in opencode **auto-loads** it as a project skill. To use it elsewhere, copy the folder · 다른 곳에서 쓰려면 `xltidy` 폴더째 복사 (PowerShell):
 
 ```powershell
 # opencode (global) · opencode 전역
 $dst = "$env:USERPROFILE\.config\opencode\skills\xltidy"
 New-Item -ItemType Directory -Force -Path $dst | Out-Null
-Copy-Item ".\skills\excel-to-db\SKILL.md" "$dst\SKILL.md" -Force
+Copy-Item ".\.opencode\skills\xltidy\SKILL.md" "$dst\SKILL.md" -Force
 
 # Claude (per-project) · Claude 프로젝트별
 New-Item -ItemType Directory -Force -Path ".\.claude\skills\xltidy" | Out-Null
-Copy-Item ".\skills\excel-to-db\SKILL.md" ".\.claude\skills\xltidy\SKILL.md" -Force
+Copy-Item ".\.opencode\skills\xltidy\SKILL.md" ".\.claude\skills\xltidy\SKILL.md" -Force
 ```
 
 Then in opencode the agent calls `skill({ name: "xltidy" })`. · 이후 opencode에서 에이전트가 `skill({ name: "xltidy" })`로 호출.
@@ -192,8 +192,9 @@ src/xltidy/
   extract.py      xlwings: list_sheets (incl. hidden) + extract
   pivot.py        native pivot extraction via COM PivotTables
   cli.py          typer CLI
-skills/excel-to-db/SKILL.md   opencode / Claude skill
-docs/superpowers/             design spec + implementation plan
+.opencode/skills/xltidy/SKILL.md   opencode skill (auto-loaded; folder = skill name)
+.opencode/commands/xltidy.md       /xltidy slash command
+docs/superpowers/                  design spec + implementation plan
 ```
 
 ## Roadmap · 로드맵
