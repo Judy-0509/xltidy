@@ -10,7 +10,7 @@
 
 조사기관 Excel은 병합셀·다중헤더·소계행이 섞인 복잡한 보고서이고, **한 워크북에 데이터 시트가 여러 개**이며(숨김 시트 포함), **피벗 테이블**도 자주 쓰인다. 또한 동일 양식이 **월/분기로 반복**된다. 이를 tidy 관계형 데이터로 만들어 **워크북 하나를 하나의 DB(=출력 폴더, 표마다 파일)** 로 정리하고 버전 간 통합하는 것이 목표다.
 
-레퍼런스 [exstruct](https://github.com/harumiWeb/exstruct)(Excel→구조화 JSON; openpyxl/COM 백엔드)의 데이터 모델·MCP 아이디어는 차용하되 **사내 제약**에 맞춰 재설계한다.
+레퍼런스 [exstruct](https://github.com/harumiWeb/exstruct)(Excel→구조화 JSON; openpyxl/COM 백엔드)의 데이터 모델·MCP **개념에서 영감만** 받되(코드 복사 없음; exstruct는 BSD-3-Clause) **사내 제약**에 맞춰 처음부터 재설계한다.
 
 ### 1.1 성공 기준
 1. openpyxl을 **직접·전이 모두** 쓰지 않는다 (CI가 강제).

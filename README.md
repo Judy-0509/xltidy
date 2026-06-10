@@ -76,7 +76,7 @@ Requirements · 요구사항: **Python 3.10+**, and for COM features (`sheets` /
 ## In-house setup · 사내 설치 (PowerShell)
 
 ```powershell
-# 1) Clone the private repo (you must be authenticated to GitHub) · private 레포 클론
+# 1) Clone the repo · 레포 클론
 git clone https://github.com/Judy-0509/xltidy.git
 Set-Location xltidy
 
@@ -89,11 +89,11 @@ python -m pip install -e ".[dev,parquet,qwen]"
 
 # 4) Point at your in-house Qwen (OpenAI-compatible) · 사내 Qwen 연결
 #    this session only · 이 세션만:
-$env:XLTIDY_QWEN_BASE_URL = "http://qwen.your-company.internal/v1"
+$env:XLTIDY_QWEN_BASE_URL = "http://qwen.example.internal/v1"
 $env:XLTIDY_QWEN_API_KEY  = "your-internal-key"
 $env:XLTIDY_QWEN_MODEL    = "qwen2.5-72b-instruct"
 #    persist for your user (new shells) · 사용자 환경변수로 영구 저장:
-[Environment]::SetEnvironmentVariable("XLTIDY_QWEN_BASE_URL", "http://qwen.your-company.internal/v1", "User")
+[Environment]::SetEnvironmentVariable("XLTIDY_QWEN_BASE_URL", "http://qwen.example.internal/v1", "User")
 [Environment]::SetEnvironmentVariable("XLTIDY_QWEN_MODEL", "qwen2.5-72b-instruct", "User")
 
 # 5) Smoke-test the install · 설치 점검

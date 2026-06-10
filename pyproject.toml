@@ -6,8 +6,26 @@ build-backend = "hatchling.build"
 name = "xltidy"
 version = "0.1.0"
 description = "xlwings-only Excel -> tidy per-workbook folder of tables, with reusable TemplateSpec"
+readme = "README.md"
 requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Judy-0509" }]
+keywords = ["excel", "xlwings", "etl", "tidy-data", "pivot-table", "qwen", "opencode", "survey-data"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Topic :: Office/Business :: Financial :: Spreadsheet",
+]
 dependencies = ["xlwings>=0.31", "pandas>=2.0", "pydantic>=2.5", "pyyaml>=6.0", "typer>=0.12", "click>=8.1,<8.2", "rich>=13.0"]
+
+[project.urls]
+Homepage = "https://github.com/Judy-0509/xltidy"
+Repository = "https://github.com/Judy-0509/xltidy"
+Issues = "https://github.com/Judy-0509/xltidy/issues"
 
 [project.optional-dependencies]
 parquet = ["pyarrow>=15.0"]
