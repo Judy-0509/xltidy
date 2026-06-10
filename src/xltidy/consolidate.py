@@ -14,6 +14,7 @@ from .spec import TemplateSpec
 class ConsolidateResult:
     tables: dict[str, pd.DataFrame] = field(default_factory=dict)
     drift_by_file: dict[str, list[str]] = field(default_factory=dict)
+    verify_by_file: dict[str, list[str]] = field(default_factory=dict)
 
 
 def detect_drift(spec: TemplateSpec, *, available_sheets: list[str],
@@ -43,9 +44,11 @@ def detect_drift(spec: TemplateSpec, *, available_sheets: list[str],
 
 
 def consolidate(files: list[str], spec: TemplateSpec, *, list_sheets_fn,
-                sheet_extractor, pivot_extractor, on_drift: str = "stop") -> ConsolidateResult:
+                sheet_extractor, pivot_extractor, on_drift: str = "stop",
+                verify: bool = False, verify_sample: int | None = 50) -> ConsolidateResult:
     acc: dict[str, list[pd.DataFrame]] = {}
     drift_by_file: dict[str, list[str]] = {}
+    verify_by_file: dict[str, list[str]] = {}
     for path in files:
         available = [s.name for s in list_sheets_fn(path)]
         # 표 시트만 드리프트용으로 추출
@@ -61,8 +64,11 @@ def consolidate(files: list[str], spec: TemplateSpec, *, list_sheets_fn,
                 continue
         res = apply_workbook(path, spec, sheet_extractor=sheet_extractor,
                              pivot_extractor=pivot_extractor, list_sheets_fn=list_sheets_fn,
-                             filename=path)
+                             filename=path, verify=verify, verify_sample=verify_sample)
+        if res.verify:
+            verify_by_file[path] = res.verify
         for name, frame in res.tables.items():
             acc.setdefault(name, []).append(frame)
     tables = {name: pd.concat(frames, ignore_index=True) for name, frames in acc.items()}
-    return ConsolidateResult(tables=tables, drift_by_file=drift_by_file)
+    return ConsolidateResult(tables=tables, drift_by_file=drift_by_file,
+                             verify_by_file=verify_by_file)

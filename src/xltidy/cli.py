@@ -89,34 +89,49 @@ def spec_validate(spec: str, against: str = typer.Option(None), sheet: str = typ
 @app.command()
 def apply(spec: str, file: str = typer.Option(None), grid: str = typer.Option(None),
           sheet: str = typer.Option(None), period: str = typer.Option(None),
-          out_dir: str = typer.Option(...), fmt: str = typer.Option("csv", "--format")):
+          out_dir: str = typer.Option(...), fmt: str = typer.Option("csv", "--format"),
+          verify: bool = typer.Option(False, "--verify",
+                                      help="count check + random sample round-trip"),
+          sample: int = typer.Option(50, "--sample", help="sampled cells per table (0 = all)")):
     sp = TemplateSpec.from_yaml(spec)
+    vs = None if sample == 0 else sample
     if grid:  # 단일 grid 주입(테스트/단일시트 편의)
         g = _grid_from(None, grid, sheet)
         res = apply_workbook(grid, sp, sheet_extractor=lambda p, s: g,
                              pivot_extractor=lambda p, s, n: (_empty_pivot(), None),
-                             list_sheets_fn=lambda p: [], period=period, filename=grid)
+                             list_sheets_fn=lambda p: [], period=period, filename=grid,
+                             verify=verify, verify_sample=vs)
     else:
-        res = apply_workbook(file, sp, period=period, filename=file)
+        res = apply_workbook(file, sp, period=period, filename=file,
+                             verify=verify, verify_sample=vs)
     paths = write_tables(res.tables, out_dir, fmt=fmt)
     if not res.reconcile.ok:
         for i in res.reconcile.issues:
             rprint(f"[red]reconcile ✗[/] {i}")
+    for i in res.verify:
+        rprint(f"[red]verify ✗[/] {i}")
     rprint(f"[green]wrote[/] {len(paths)} tables → {out_dir}")
-    raise typer.Exit(0 if res.reconcile.ok else 2)
+    ok = res.reconcile.ok and not res.verify
+    raise typer.Exit(0 if ok else 2)
 
 
 @app.command()
 def consolidate(spec: str, files: str, out_dir: str = typer.Option(...),
-                fmt: str = typer.Option("csv", "--format"), on_drift: str = typer.Option("stop")):
+                fmt: str = typer.Option("csv", "--format"), on_drift: str = typer.Option("stop"),
+                verify: bool = typer.Option(False, "--verify",
+                                            help="count check + random sample round-trip"),
+                sample: int = typer.Option(50, "--sample", help="sampled cells per table (0 = all)")):
     from .extract import extract as ex, list_sheets
     from .pivot import extract_pivot
     sp = TemplateSpec.from_yaml(spec)
     paths = sorted(_glob.glob(files))
     res = _consolidate(paths, sp, list_sheets_fn=list_sheets, sheet_extractor=ex,
-                       pivot_extractor=extract_pivot, on_drift=on_drift)
+                       pivot_extractor=extract_pivot, on_drift=on_drift,
+                       verify=verify, verify_sample=(None if sample == 0 else sample))
     for path, drift in res.drift_by_file.items():
         rprint(f"[yellow]drift[/] {path}: {drift}")
+    for path, vissues in res.verify_by_file.items():
+        rprint(f"[red]verify ✗[/] {path}: {vissues}")
     written = write_tables(res.tables, out_dir, fmt=fmt)
     rprint(f"[green]wrote[/] {len(written)} tables → {out_dir}")
 

@@ -130,6 +130,8 @@ xltidy consolidate specs/employment.yaml "data/2024*.xlsx" --out-dir merged --fo
 
 `reconcile` mismatches (subtotal ≠ sum, pivot data ≠ grand total) and `drift` (renamed headers, missing selected sheets) are reported; drifted files are **excluded** under `--on-drift stop`. · 정합성 불일치와 드리프트가 보고되며, `--on-drift stop`이면 어긋난 파일은 적재되지 않습니다.
 
+Add `--verify` to `apply`/`consolidate` for an independent **output check** — a row-count check plus a random **sample round-trip** (source cells → output), which works even when the sheet has no subtotals. `--sample N` sets the sampled cell count (`0` = check all). · `--verify`는 합계가 없어도 통하는 출력 검증(개수 + 랜덤 샘플 왕복)을 추가합니다.
+
 ## Use as an opencode / Claude skill · 스킬로 사용
 
 The skill ships at [`.opencode/skills/xltidy/SKILL.md`](.opencode/skills/xltidy/SKILL.md) (folder name = skill `name`), so opening this repo in opencode **auto-loads** it as a project skill. To use it elsewhere, copy the folder · 다른 곳에서 쓰려면 `xltidy` 폴더째 복사 (PowerShell):

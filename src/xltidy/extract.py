@@ -64,21 +64,43 @@ def extract(path: str, sheet: str | int | None = None) -> CellGrid:
                     cells.append(Cell(row=r0 + i, col=c0 + j, value=val,
                                       formula=f if isinstance(f, str) and f.startswith("=") else None))
             return CellGrid(sheet=sht.name, n_rows=n_rows, n_cols=n_cols,
-                            cells=cells, merged=_read_merged(sht))
+                            cells=cells, merged=_read_merged(sht, cells))
         finally:
             wb.close()
     finally:
         app.quit()
 
 
-def _read_merged(sht) -> list[MergedRange]:
+def _read_merged(sht, cells: list[Cell]) -> list[MergedRange]:
+    """Enumerate merged ranges without scanning every cell over COM.
+
+    Two speedups vs. a full per-cell scan (which is O(used cells) COM round
+    trips and times out on large sheets):
+      1. Fast path: if the whole used range reports MergeCells == False, there
+         are no merges anywhere -> return [] immediately (the common case for
+         big flat data dumps).
+      2. Otherwise scan only **text/label cells** (merge anchors in survey data
+         are category labels and headers, i.e. strings). The numeric body is
+         never merged in practice, so we skip it. Combined with the sparse
+         `cells` list this is a handful of COM calls instead of hundreds of
+         thousands.
+    """
+    used = sht.used_range
+    try:
+        if used.api.MergeCells is False:
+            return []
+    except Exception:
+        pass  # mixed/unknown -> fall through to the targeted scan
+
     merged: list[MergedRange] = []
     seen: set[tuple[int, int, int, int]] = set()
-    for cell in sht.used_range:
-        if cell.api.MergeCells:
-            a = cell.api.MergeArea
-            r1, c1 = a.Row, a.Column
-            key = (r1, c1, r1 + a.Rows.Count - 1, c1 + a.Columns.Count - 1)
+    for c in cells:
+        if not isinstance(c.value, str):
+            continue  # merges live in text labels/headers, not numeric cells
+        api = sht.range((c.row, c.col)).api
+        if api.MergeCells:
+            a = api.MergeArea
+            key = (a.Row, a.Column, a.Row + a.Rows.Count - 1, a.Column + a.Columns.Count - 1)
             if key not in seen and (key[0], key[1]) != (key[2], key[3]):
                 seen.add(key)
                 merged.append(MergedRange(r1=key[0], c1=key[1], r2=key[2], c2=key[3]))

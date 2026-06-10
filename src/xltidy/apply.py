@@ -16,6 +16,7 @@ class ApplyResult:
     tables: dict[str, pd.DataFrame] = field(default_factory=dict)
     reconcile: ReconcileReport = field(default_factory=ReconcileReport)
     drift: list[str] = field(default_factory=list)
+    verify: list[str] = field(default_factory=list)
 
 
 def resolve_period(period: PeriodSpec, filename: str, grid: CellGrid | None = None) -> str | None:
@@ -72,7 +73,8 @@ def finalize_pivot(raw: pd.DataFrame, table: TableSpec, *, period: str | None) -
 
 def apply_workbook(path: str, spec: TemplateSpec, *, sheet_extractor=None,
                    pivot_extractor=None, list_sheets_fn=None,
-                   period: str | None = None, filename: str | None = None) -> ApplyResult:
+                   period: str | None = None, filename: str | None = None,
+                   verify: bool = False, verify_sample: int | None = 50) -> ApplyResult:
     if sheet_extractor is None:
         from .extract import extract as sheet_extractor
     if pivot_extractor is None:
@@ -81,18 +83,24 @@ def apply_workbook(path: str, spec: TemplateSpec, *, sheet_extractor=None,
 
     tables: dict[str, pd.DataFrame] = {}
     issues: list[str] = []
+    verify_issues: list[str] = []
     for sheet in spec.sheets:
         skey = sheet.sheet_match.value
         for table in sheet.tables:
             if table.kind == "table":
                 grid = sheet_extractor(path, skey)
                 pval = period if period is not None else resolve_period(table.period, fname, grid)
-                tables[table.name] = apply_table(grid, table, period=pval)
+                frame = apply_table(grid, table, period=pval)
+                tables[table.name] = frame
                 issues += reconcile_table(grid, table)
+                if verify:
+                    from .verify import verify_table
+                    verify_issues += verify_table(grid, table, frame, period=pval, sample=verify_sample)
             else:  # pivot
                 raw, gt = pivot_extractor(path, skey, table.pivot_name)
                 pval = period if period is not None else resolve_period(table.period, fname, None)
                 frame = finalize_pivot(raw, table, period=pval)
                 tables[table.name] = frame
                 issues += reconcile_pivot(float(frame["value"].sum()), gt, table.name)
-    return ApplyResult(tables=tables, reconcile=ReconcileReport(ok=not issues, issues=issues))
+    return ApplyResult(tables=tables, reconcile=ReconcileReport(ok=not issues, issues=issues),
+                       verify=verify_issues)

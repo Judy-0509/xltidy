@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 
 
 class Cell(BaseModel):
@@ -27,8 +27,19 @@ class CellGrid(BaseModel):
     cells: list[Cell] = []
     merged: list[MergedRange] = []
 
+    # Lazily-built (row, col) -> value lookup, cached so at()/value_filled are O(1).
+    # Built once on first access. Do NOT mutate `cells` after the first lookup
+    # (the tool builds a grid once via extract and only reads it); call
+    # invalidate() if you must.
+    _lookup: dict[tuple[int, int], Any] | None = PrivateAttr(default=None)
+
     def _index(self) -> dict[tuple[int, int], Any]:
-        return {(c.row, c.col): c.value for c in self.cells}
+        if self._lookup is None:
+            self._lookup = {(c.row, c.col): c.value for c in self.cells}
+        return self._lookup
+
+    def invalidate(self) -> None:
+        self._lookup = None
 
     def at(self, row: int, col: int) -> Any:
         return self._index().get((row, col))
