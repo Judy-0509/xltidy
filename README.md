@@ -6,6 +6,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Judy-0509/xltidy/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Judy-0509/xltidy/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-blue">
   <img alt="excel io" src="https://img.shields.io/badge/Excel%20I%2FO-xlwings%20only-success">
   <img alt="no openpyxl" src="https://img.shields.io/badge/openpyxl-banned-critical">
