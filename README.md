@@ -1,61 +1,155 @@
-# xltidy
+<h1 align="center">xltidy</h1>
 
-xlwings-only로 복잡한 조사기관 Excel을 읽어 **워크북 1개 = 출력 폴더 1개**(시트/표마다 tidy CSV/Parquet)로 정규화하고, 월/분기 버전을 통합하는 도구. 재사용 가능한 `TemplateSpec`을 결정론적으로 적용한다. 일반 표는 LLM이 구조만 추론하고, 피벗 테이블은 COM 네이티브로 추출한다.
+<p align="center">
+  <b>Turn messy survey-institution Excel into tidy, DB-ready tables — using <code>xlwings</code> only.</b><br>
+  <b>복잡한 조사기관 Excel을 <code>xlwings</code>만으로 깔끔한 DB용 테이블로.</b>
+</p>
 
-## 설치
+<p align="center">
+  <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-blue">
+  <img alt="excel io" src="https://img.shields.io/badge/Excel%20I%2FO-xlwings%20only-success">
+  <img alt="no openpyxl" src="https://img.shields.io/badge/openpyxl-banned-critical">
+  <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20%2B%20Excel-lightgrey">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-green">
+</p>
+
+---
+
+## 🇬🇧 What is this?
+
+**xltidy** converts complex, real-world Excel workbooks from research/survey institutions into **tidy, DB-ready tables** — without ever touching `openpyxl`.
+
+Survey Excel files are hard: merged cells, multi-level headers, subtotal rows, pivot tables, and the *same template repeated every month/quarter*. xltidy reads them with a **live Excel via `xlwings`** (so formula values, formats, and pivots are real), then applies a **reusable `TemplateSpec`** deterministically:
+
+- **One workbook → one output folder** (one tidy CSV/Parquet file per sheet/table) — *"1 Excel = 1 DB"*.
+- **Regular tables**: an LLM (your in-house Qwen, or an [opencode](https://opencode.ai)/Claude agent) infers the *structure only* once per template; the actual numbers are read deterministically from the spreadsheet — **the LLM never transcribes values**.
+- **Pivot tables**: extracted natively via Excel COM (`PivotTables`) — no LLM needed, and more reliable than scraping rendered cells.
+- **Version consolidation**: stack monthly/quarterly files into one time series with a `period` dimension, and **flag drift** when a new file no longer matches the template (renamed columns, missing sheets, shifted regions).
+- **Integrity first**: every run reconciles (table subtotal == sum of components; pivot data sum == grand total).
+
+Designed for **on-prem / in-house** use (data never leaves the building), so it pairs with a self-hosted Qwen and ships as an **opencode/Claude skill**.
+
+## 🇰🇷 이게 뭔가요?
+
+**xltidy**는 조사기관에서 받는 **복잡한 Excel**(병합셀·다중헤더·소계행·피벗·월/분기 반복 양식)을 `openpyxl` 없이 **깔끔한 DB용 tidy 테이블**로 변환하는 도구입니다.
+
+`xlwings`로 **살아있는 Excel을 직접** 읽어(수식 계산값·서식·피벗이 모두 실제값) 재사용 가능한 **`TemplateSpec`** 을 결정론적으로 적용합니다.
+
+- **워크북 1개 → 출력 폴더 1개** (시트/표마다 tidy CSV·Parquet 파일) — *"엑셀 1개 = DB 1개"*.
+- **일반 표**: LLM(사내 Qwen 또는 [opencode](https://opencode.ai)/Claude 에이전트)이 양식당 **한 번 구조만** 추론하고, 실제 숫자값은 좌표에서 **결정론적으로** 읽습니다 — **LLM은 값을 전사하지 않습니다**.
+- **피벗 테이블**: Excel COM(`PivotTables`)으로 **네이티브 추출** — LLM 불필요, 렌더 셀 스크래핑보다 안정적.
+- **버전 통합**: 월/분기 파일을 `period` 차원으로 한 시계열에 쌓고, 새 파일이 양식과 어긋나면(컬럼 이름변경·시트 누락·영역 이동) **드리프트로 플래그**.
+- **무결성 우선**: 매 실행마다 정합성 검증(표 소계 == 구성합, 피벗 데이터합 == 총합계).
+
+데이터가 **사내 밖으로 나가지 않는** 온프렘 환경을 전제로 설계되어, 자체 호스팅 Qwen과 함께 쓰고 **opencode/Claude 스킬**로 제공됩니다.
+
+---
+
+## How it works · 동작 원리
+
+```
+0) xltidy sheets <file>  ─▶  모든 시트(숨김 포함) 나열  ─▶  [사용자가 DB화할 시트 선택]
+                                                               │
+   선택 시트별로 · per selected sheet:                          ▼
+   kind=table:  extract (xlwings) ─▶ CellGrid ─ encode ─▶ [agent/Qwen] ─▶ TableSpec   (구조만/structure only)
+   kind=pivot:  extract_pivot (COM PivotTables) ───────────────────────▶ TableSpec   (LLM 건너뜀/LLM-free)
+                                                               │
+   각 월/분기 파일 + TemplateSpec ─ apply ─▶ {표이름: tidy long(+period)} + reconcile + drift
+                                                               │
+   여러 파일 ─ consolidate ─▶ 표별 period 누적 + 드리프트 ─▶ 출력 폴더 (<table>.csv/.parquet)
+```
+
+The LLM only ever produces the `TemplateSpec` (coordinates and structure). Deterministic code reads the real values. · LLM은 `TemplateSpec`(좌표·구조)만 만들고, 실제 값은 결정론 코드가 읽습니다.
+
+## Install · 설치
 
 ```bash
 python -m pip install -e ".[dev]"
-# parquet 출력까지: python -m pip install -e ".[dev,parquet]"
-# 사내 Qwen 자동 추론까지: python -m pip install -e ".[dev,parquet,qwen]"
+# + Parquet output:        python -m pip install -e ".[dev,parquet]"
+# + in-house Qwen backend: python -m pip install -e ".[dev,parquet,qwen]"
 ```
 
-요구사항: Python 3.10+, 그리고 COM 기능(`sheets`/`extract`/`apply`/`consolidate`의 피벗·시트 추출)에는 **Windows + 설치된 Microsoft Excel**이 필요하다.
+Requirements · 요구사항: **Python 3.10+**, and for COM features (`sheets` / `extract` / pivot in `apply`·`consolidate`) a **Windows machine with Microsoft Excel installed**.
 
-## 빠른 시작
-
-0. **시트 선택(먼저)** — 숨김·very_hidden 포함 모든 시트 확인:
-   ```bash
-   xltidy sheets <대표파일.xlsx>
-   ```
-1. **스펙 작성(양식당 1회)**:
-   - 표 시트: `xltidy infer <파일> --sheet <시트> --backend agent` 로 인코딩을 받아 `specs/<id>.yaml`을 작성한다. 다중헤더는 값열마다 `column_semantics` 한 항목으로 평탄화. 숫자값은 `#num`으로 가려지므로 좌표·구조만.
-   - 피벗 시트: 추론하지 말고 `kind: pivot` + `pivot_name`(없으면 null) + `period`만 적는다.
-2. **검증**:
-   ```bash
-   xltidy spec-validate specs/<id>.yaml --against <파일> --sheet <시트>
-   ```
-3. **단일 적용**:
-   ```bash
-   xltidy apply specs/<id>.yaml --file <파일> --out-dir out/<period> --format csv
-   ```
-   reconcile(표 소계 == 합, 피벗 합 == 총합계)가 ✗면 스펙을 수정한다.
-4. **버전 통합**:
-   ```bash
-   xltidy consolidate specs/<id>.yaml "data/2024*.xlsx" --out-dir merged --format parquet --on-drift stop
-   ```
-   드리프트(선택 시트 누락/헤더 변경 포함)가 보고된 파일은 적재되지 않는다. 양식 변경이면 스펙 `version`을 올린 뒤 재작성한다.
-
-## 제약
-
-- **xlwings 전용.** `openpyxl`, `pandas.read_excel`/`ExcelFile`은 하드 금지(`tests/test_no_openpyxl.py` 가드).
-- 무인 자동 추론은 사내 Qwen 백엔드(`--backend qwen`) 옵션. 환경변수: `XLTIDY_QWEN_BASE_URL`, `XLTIDY_QWEN_API_KEY`, `XLTIDY_QWEN_MODEL`.
-- 피벗 추출은 단일 데이터 필드(v1). 다중 데이터 필드는 WARNING 후 첫 필드만 사용.
-
-## 테스트
+## Quickstart · 빠른 시작
 
 ```bash
-python -m pytest -m "not excel"   # 코어(순수부) — Excel 불필요
-python -m pytest -m excel         # COM(extract/pivot/e2e) — 데스크톱 Excel 필요
+# 0) Choose sheets — lists ALL sheets incl. hidden / very-hidden
+#    시트 선택 — 숨김·very_hidden 포함 전체 시트 확인
+xltidy sheets report_2024Q1.xlsx
+
+# 1) Author a TemplateSpec once per template · 양식당 1회 스펙 작성
+#    table sheets: get an encoding for the agent to fill the spec
+#    표 시트: 에이전트가 spec.yaml을 채우도록 인코딩 출력
+xltidy infer report_2024Q1.xlsx --sheet 데이터 --backend agent
+#    pivot sheets: just write `kind: pivot` + pivot_name + period in the spec
+#    피벗 시트: 스펙에 kind:pivot + pivot_name + period 만 작성
+
+# 2) Validate · 검증
+xltidy spec-validate specs/employment.yaml --against report_2024Q1.xlsx --sheet 데이터
+
+# 3) Apply one workbook → one folder of tidy tables · 단일 적용(폴더 출력)
+xltidy apply specs/employment.yaml --file report_2024Q1.xlsx --out-dir out/2024Q1 --format csv
+
+# 4) Consolidate monthly/quarterly versions · 월/분기 버전 통합
+xltidy consolidate specs/employment.yaml "data/2024*.xlsx" --out-dir merged --format parquet --on-drift stop
 ```
 
-## Skill 설치 (opencode / Claude)
+`reconcile` mismatches (subtotal ≠ sum, pivot data ≠ grand total) and `drift` (renamed headers, missing selected sheets) are reported; drifted files are **excluded** under `--on-drift stop`. · 정합성 불일치와 드리프트가 보고되며, `--on-drift stop`이면 어긋난 파일은 적재되지 않습니다.
 
-`skills/excel-to-db/`를 에이전트 skills 경로로 복사한다:
-- opencode: `~/.config/opencode/skills/xltidy/`
-- Claude: `.claude/skills/`
+## Use as an opencode / Claude skill · 스킬로 사용
 
-## 참고
+Copy `skills/excel-to-db/` into your agent's skills path · 에이전트 skills 경로로 복사:
 
-- 설계 스펙: `docs/superpowers/specs/2026-06-10-xltidy-excel-to-db-design.md`
-- 구현 계획: `docs/superpowers/plans/2026-06-10-xltidy.md`
+- **opencode**: `~/.config/opencode/skills/xltidy/`
+- **Claude**: `.claude/skills/`
+
+The skill drives the whole workflow (sheet selection → spec authoring → apply → consolidate). Since the agent already runs on an LLM (e.g., your in-house Qwen), no separate Qwen API call is needed. · 스킬이 전체 워크플로를 수행하며, 에이전트 자체가 LLM(사내 Qwen 등) 위에서 돌므로 별도 Qwen 호출이 필요 없습니다.
+
+## Constraints · 제약
+
+- **xlwings only.** `openpyxl`, `pandas.read_excel`/`ExcelFile` are hard-banned and enforced by `tests/test_no_openpyxl.py`. · 하드 금지, 가드 테스트로 강제.
+- Unattended inference uses the in-house **Qwen** backend (`--backend qwen`), configured via `XLTIDY_QWEN_BASE_URL`, `XLTIDY_QWEN_API_KEY`, `XLTIDY_QWEN_MODEL`. · 무인 추론은 사내 Qwen 옵션.
+- Pivot extraction supports a **single data field** in v1 (multi-field pivots warn and use the first). · 피벗은 v1에서 단일 데이터 필드.
+
+## Testing · 테스트
+
+```bash
+python -m pytest -m "not excel"   # core (pure) — no Excel needed · 코어, Excel 불필요
+python -m pytest -m excel         # COM (extract/pivot/e2e) — desktop Excel required · 데스크톱 Excel 필요
+```
+
+## Project structure · 프로젝트 구조
+
+```
+src/xltidy/
+  coords.py       A1 <-> (row, col)
+  models.py       Cell, MergedRange, CellGrid (value_filled = merge->anchor), SheetInfo
+  encode.py       CellGrid -> compact text for the LLM (numbers masked as #num)
+  spec.py         TemplateSpec / SheetSpec / TableSpec (kind: table | pivot)
+  reconcile.py    table subtotal==sum · pivot data==grand total
+  apply.py        apply_table / finalize_pivot / apply_workbook (DI)
+  dbio.py         write_tables -> per-workbook folder of CSV/Parquet
+  consolidate.py  detect_drift (sheet/column/region) + consolidate
+  config.py       XLTIDY_QWEN_* env
+  infer.py        agent prompt builder + optional Qwen backend
+  extract.py      xlwings: list_sheets (incl. hidden) + extract
+  pivot.py        native pivot extraction via COM PivotTables
+  cli.py          typer CLI
+skills/excel-to-db/SKILL.md   opencode / Claude skill
+docs/superpowers/             design spec + implementation plan
+```
+
+## Roadmap · 로드맵
+
+SQL DB adapters (SQLite/Postgres), heuristic table auto-detection, MCP server, server/headless batch, natural-language → SQL, multi-data-field pivots. · SQL 어댑터, 휴리스틱 표 감지, MCP 서버, 서버 배치, 자연어→SQL, 다중 데이터필드 피벗.
+
+## References · 참고
+
+- Design spec · 설계 스펙: [`docs/superpowers/specs/2026-06-10-xltidy-excel-to-db-design.md`](docs/superpowers/specs/2026-06-10-xltidy-excel-to-db-design.md)
+- Implementation plan · 구현 계획: [`docs/superpowers/plans/2026-06-10-xltidy.md`](docs/superpowers/plans/2026-06-10-xltidy.md)
+- Inspired by [exstruct](https://github.com/harumiWeb/exstruct) (Excel → structured JSON for LLM/RAG).
+
+## License
+
+[MIT](LICENSE) © 2026 Judy-0509
