@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import pandas as pd
-import xlwings as xw
+
+from ._xl import new_app, quit_app
 
 # XlPivotCellType constants (read empirically from the COM type library on the
 # dev machine): xlPivotCellValue=0, xlPivotCellSubtotal=2, xlPivotCellGrandTotal=3,
@@ -21,7 +22,7 @@ import xlwings as xw
 
 def extract_pivot(path: str, sheet: str | int, pivot_name: str | None = None):
     """피벗을 tidy long으로. 반환 (frame, grand_total). 단일 데이터 필드 한정."""
-    app = xw.App(visible=False, add_book=False)
+    app = new_app()
     try:
         wb = app.books.open(path, read_only=False, update_links=False)
         try:
@@ -76,4 +77,4 @@ def extract_pivot(path: str, sheet: str | int, pivot_name: str | None = None):
         finally:
             wb.close()
     finally:
-        app.quit()
+        quit_app(app)

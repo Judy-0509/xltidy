@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import xlwings as xw
-
+from ._xl import new_app, quit_app
 from .models import Cell, CellGrid, MergedRange, SheetInfo
 
 _VIS = {-1: "visible", 0: "hidden", 2: "very_hidden"}
@@ -19,7 +18,7 @@ def _as_2d(value):
 
 
 def list_sheets(path: str) -> list[SheetInfo]:
-    app = xw.App(visible=False, add_book=False)
+    app = new_app()
     try:
         wb = app.books.open(path, read_only=True, update_links=False)
         try:
@@ -41,11 +40,11 @@ def list_sheets(path: str) -> list[SheetInfo]:
         finally:
             wb.close()
     finally:
-        app.quit()
+        quit_app(app)
 
 
 def extract(path: str, sheet: str | int | None = None) -> CellGrid:
-    app = xw.App(visible=False, add_book=False)
+    app = new_app()
     try:
         wb = app.books.open(path, read_only=True, update_links=False)
         try:
@@ -68,7 +67,7 @@ def extract(path: str, sheet: str | int | None = None) -> CellGrid:
         finally:
             wb.close()
     finally:
-        app.quit()
+        quit_app(app)
 
 
 def _read_merged(sht, cells: list[Cell]) -> list[MergedRange]:

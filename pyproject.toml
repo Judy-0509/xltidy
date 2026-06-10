@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xltidy"
-version = "0.1.4"
+version = "0.1.5"
 description = "xlwings-only Excel -> tidy per-workbook folder of tables, with reusable TemplateSpec"
 readme = "README.md"
 requires-python = ">=3.10"
