@@ -17,7 +17,7 @@ from .infer import build_agent_prompt
 from .models import CellGrid
 from .spec import TemplateSpec
 
-app = typer.Typer(help="xlwings-only Excel -> tidy per-workbook folder of tables")
+app = typer.Typer(help="Moa (모아): xlwings-only Excel -> tidy per-workbook folder of tables")
 
 
 def _grid_from(file: str | None, grid: str | None, sheet: str | None) -> CellGrid:

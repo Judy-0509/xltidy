@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xltidy"
-version = "0.1.6"
-description = "xlwings-only Excel -> tidy per-workbook folder of tables, with reusable TemplateSpec"
+version = "0.1.7"
+description = "Moa (모아) — xlwings-only Excel -> tidy per-workbook folder of tables, with reusable TemplateSpec"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -23,9 +23,9 @@ classifiers = [
 dependencies = ["xlwings>=0.31", "pandas>=2.0", "pydantic>=2.5", "pyyaml>=6.0", "typer>=0.12", "click>=8.1,<8.2", "rich>=13.0"]
 
 [project.urls]
-Homepage = "https://github.com/Judy-0509/xltidy"
-Repository = "https://github.com/Judy-0509/xltidy"
-Issues = "https://github.com/Judy-0509/xltidy/issues"
+Homepage = "https://github.com/Judy-0509/moa"
+Repository = "https://github.com/Judy-0509/moa"
+Issues = "https://github.com/Judy-0509/moa/issues"
 
 [project.optional-dependencies]
 parquet = ["pyarrow>=15.0"]
@@ -33,7 +33,8 @@ qwen = ["openai>=1.40"]
 dev = ["pytest>=8.0"]
 
 [project.scripts]
-xltidy = "xltidy.cli:app"
+moa = "xltidy.cli:app"
+xltidy = "xltidy.cli:app"  # legacy alias (non-breaking); both commands run the same CLI
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/xltidy"]
