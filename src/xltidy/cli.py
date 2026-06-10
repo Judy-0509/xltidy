@@ -94,7 +94,7 @@ def apply(spec: str, file: str = typer.Option(None), grid: str = typer.Option(No
                                       help="count check + random sample round-trip"),
           sample: int = typer.Option(50, "--sample", help="sampled cells per table (0 = all)")):
     sp = TemplateSpec.from_yaml(spec)
-    vs = None if sample == 0 else sample
+    vs = None if sample <= 0 else sample  # <=0 = check all
     if grid:  # 단일 grid 주입(테스트/단일시트 편의)
         g = _grid_from(None, grid, sheet)
         res = apply_workbook(grid, sp, sheet_extractor=lambda p, s: g,
@@ -127,13 +127,15 @@ def consolidate(spec: str, files: str, out_dir: str = typer.Option(...),
     paths = sorted(_glob.glob(files))
     res = _consolidate(paths, sp, list_sheets_fn=list_sheets, sheet_extractor=ex,
                        pivot_extractor=extract_pivot, on_drift=on_drift,
-                       verify=verify, verify_sample=(None if sample == 0 else sample))
+                       verify=verify, verify_sample=(None if sample <= 0 else sample))
     for path, drift in res.drift_by_file.items():
         rprint(f"[yellow]drift[/] {path}: {drift}")
     for path, vissues in res.verify_by_file.items():
         rprint(f"[red]verify ✗[/] {path}: {vissues}")
     written = write_tables(res.tables, out_dir, fmt=fmt)
     rprint(f"[green]wrote[/] {len(written)} tables → {out_dir}")
+    ok = not res.drift_by_file and not res.verify_by_file
+    raise typer.Exit(0 if ok else 2)
 
 
 def _empty_pivot():

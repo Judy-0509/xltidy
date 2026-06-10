@@ -41,3 +41,12 @@ def test_large_grid_lookup_correct():
     assert g.at(1, 1) == 11
     assert g.at(5000, 4) == 50004
     assert g.at(2500, 3) == 25003
+
+
+def test_model_copy_invalidates_cache():
+    # copying must not carry a stale (row,col)->value index into the copy
+    g = CellGrid(sheet="s", n_rows=2, n_cols=2, cells=[Cell(row=1, col=1, value=1)])
+    assert g.at(1, 1) == 1  # builds cache
+    g2 = g.model_copy(update={"cells": [Cell(row=1, col=1, value=99)]})
+    assert g2.at(1, 1) == 99  # not stale
+    assert g.at(1, 1) == 1    # original unchanged

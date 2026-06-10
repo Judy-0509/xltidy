@@ -41,6 +41,11 @@ class CellGrid(BaseModel):
     def invalidate(self) -> None:
         self._lookup = None
 
+    def model_copy(self, **kwargs):  # type: ignore[override]
+        copied = super().model_copy(**kwargs)
+        copied._lookup = None  # never carry a stale index into a copy
+        return copied
+
     def at(self, row: int, col: int) -> Any:
         return self._index().get((row, col))
 

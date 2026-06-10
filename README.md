@@ -169,6 +169,7 @@ The skill drives the whole workflow (sheet selection → spec authoring → appl
 - **xlwings only.** `openpyxl`, `pandas.read_excel`/`ExcelFile` are hard-banned and enforced by `tests/test_no_openpyxl.py`. · 하드 금지, 가드 테스트로 강제.
 - Unattended inference uses the in-house **Qwen** backend (`--backend qwen`), configured via `XLTIDY_QWEN_BASE_URL`, `XLTIDY_QWEN_API_KEY`, `XLTIDY_QWEN_MODEL`. · 무인 추론은 사내 Qwen 옵션.
 - Pivot extraction supports a **single data field** in v1 (multi-field pivots warn and use the first). · 피벗은 v1에서 단일 데이터 필드.
+- Merge detection covers label/header anchors (text/date); a merge anchored by a **bare number**, and **merged numeric body** cells, are not supported (value cells are read per-cell). · 병합은 라벨/헤더(문자·날짜) 기준만 감지 — 숫자 본문 병합은 미지원.
 
 ## Testing · 테스트
 

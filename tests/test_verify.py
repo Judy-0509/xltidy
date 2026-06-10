@@ -27,4 +27,39 @@ def test_verify_flags_value_mismatch():
     frame = apply_table(sample_grid(), t, period="2024Q1").copy()
     frame.loc[0, "value"] = 99999.0  # corrupt one output value
     issues = verify_table(sample_grid(), t, frame, period="2024Q1", sample=None)
-    assert any("mismatch" in i for i in issues)
+    assert issues
+
+
+def _dup_grid_and_table():
+    from xltidy.models import Cell, CellGrid
+    grid = CellGrid(sheet="데이터", n_rows=5, n_cols=3, cells=[
+        Cell(row=2, col=2, value="지역"), Cell(row=2, col=3, value="값"),
+        Cell(row=3, col=2, value="서울"), Cell(row=3, col=3, value=10.0),
+        Cell(row=4, col=2, value="서울"), Cell(row=4, col=3, value=20.0),  # same label, diff value
+        Cell(row=5, col=2, value="합계"), Cell(row=5, col=3, value=30.0),
+    ])
+    table = TemplateSpec.model_validate({
+        "template_id": "dup", "version": 1, "sheets": [{
+            "sheet_match": {"by": "name", "value": "데이터"},
+            "tables": [{"name": "t", "kind": "table",
+                "region": {"start": "B2", "end": "C5"},
+                "header": {"orientation": "top", "levels": 1, "rows": [2]},
+                "index_columns": [{"col": "B", "name": "region", "type": "str"}],
+                "value_block": {"cols": ["C", "C"]},
+                "unpivot": {"var_name": "metric", "value_name": "value"},
+                "column_semantics": [{"source": "C2", "name": "값", "type": "number"}],
+                "period": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "period"},
+                "totals": [{"kind": "row_subtotal", "label": "합계", "over": "region"}]}]}]}).sheets[0].tables[0]
+    return grid, table
+
+
+def test_verify_handles_duplicate_index_labels():
+    # Regression for the dict-overwrite collision bug: two rows labelled "서울"
+    # with different values must both verify (Counter multiset), not collapse.
+    grid, table = _dup_grid_and_table()
+    frame = apply_table(grid, table, period="2024Q1")
+    assert len(frame) == 2
+    assert verify_table(grid, table, frame, period="2024Q1", sample=None) == []
+    # corrupting one of the duplicate rows must still be caught
+    frame.loc[frame.index[0], "value"] = 12345.0
+    assert verify_table(grid, table, frame, period="2024Q1", sample=None)

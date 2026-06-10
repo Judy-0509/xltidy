@@ -79,11 +79,12 @@ def _read_merged(sht, cells: list[Cell]) -> list[MergedRange]:
       1. Fast path: if the whole used range reports MergeCells == False, there
          are no merges anywhere -> return [] immediately (the common case for
          big flat data dumps).
-      2. Otherwise scan only **text/label cells** (merge anchors in survey data
-         are category labels and headers, i.e. strings). The numeric body is
-         never merged in practice, so we skip it. Combined with the sparse
-         `cells` list this is a handful of COM calls instead of hundreds of
-         thousands.
+      2. Otherwise scan every non-empty cell EXCEPT the dense numeric body.
+         Merge anchors in survey data are labels and headers -- strings, dates,
+         booleans -- so we skip only plain int/float cells (the numeric body,
+         which is never merged in practice). This catches date-valued year
+         headers and numeric-coded labels while staying fast on big tables.
+         Limitation: a merge anchored by a bare number is not auto-detected.
     """
     used = sht.used_range
     try:
@@ -95,8 +96,8 @@ def _read_merged(sht, cells: list[Cell]) -> list[MergedRange]:
     merged: list[MergedRange] = []
     seen: set[tuple[int, int, int, int]] = set()
     for c in cells:
-        if not isinstance(c.value, str):
-            continue  # merges live in text labels/headers, not numeric cells
+        if isinstance(c.value, (int, float)) and not isinstance(c.value, bool):
+            continue  # skip dense numeric body for speed (not a merge anchor)
         api = sht.range((c.row, c.col)).api
         if api.MergeCells:
             a = api.MergeArea

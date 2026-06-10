@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import math
 import random
+from collections import Counter
 from numbers import Number
 
 import pandas as pd
@@ -10,13 +12,15 @@ from .coords import col_to_idx, parse_range
 from .models import CellGrid
 from .spec import TableSpec
 
-_MISSING = object()
 
-
-def _eq(a, b) -> bool:
-    if isinstance(a, Number) and isinstance(b, Number):
-        return abs(float(a) - float(b)) <= max(1e-6, 1e-4 * abs(float(b)))
-    return a == b
+def _norm(v):
+    """Normalize a value for use as a Counter key (np.float64 -> float, NaN -> None)."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, Number):
+        f = float(v)
+        return None if math.isnan(f) else f
+    return v
 
 
 def verify_table(grid: CellGrid, table: TableSpec, frame: pd.DataFrame, *,
@@ -25,10 +29,15 @@ def verify_table(grid: CellGrid, table: TableSpec, frame: pd.DataFrame, *,
 
     Two checks, both useful even when the sheet has no subtotals (reconcile
     can't help there):
-      1. count check  -- len(frame) == (#data rows excl. subtotals) x (#value cols)
-      2. sample round-trip -- pick `sample` source value-cells at random and
-         assert each landed in the output under the right (dims, metric, period).
-         sample=None verifies every cell.
+      1. count check       -- len(frame) == (#data rows excl. subtotals) x (#value cols)
+      2. sample round-trip -- pick `sample` source value-cells at random and assert
+         each landed in the output as a row with the right (dims, metric, period,
+         value). Uses a multiset (Counter) so **duplicate index labels** (e.g. a
+         vertically merged category spanning rows) are handled correctly rather
+         than collapsing. sample=None (or <=0) verifies every cell.
+
+    Note: merged *numeric body* cells are not supported -- value cells are read
+    per-cell; a merged numeric region yields None for interior cells.
 
     Returns a list of human-readable issues ([] == all good).
     """
@@ -51,28 +60,28 @@ def verify_table(grid: CellGrid, table: TableSpec, frame: pd.DataFrame, *,
         issues.append(f"{table.name}: row count {len(frame)} != expected {expected} "
                       f"(data_rows={len(data_rows)} x value_cols={len(vb)})")
 
-    # Build a one-shot lookup of the output so each sampled cell is O(1).
+    # Multiset of full output rows; membership handles duplicate dimension keys.
     var, valn, pern = table.unpivot.var_name, table.unpivot.value_name, table.period.name
-    lut: dict = {}
-    for rec in frame.to_dict("records"):
-        lut[(tuple(rec.get(name) for _, name in idx_cols), rec.get(var), rec.get(pern))] = rec.get(valn)
+    actual: Counter = Counter(
+        (tuple(_norm(rec.get(name)) for _, name in idx_cols),
+         _norm(rec.get(var)), _norm(rec.get(pern)), _norm(rec.get(valn)))
+        for rec in frame.to_dict("records")
+    )
 
     pairs = [(r, vc) for r in data_rows for vc in vb]
-    if sample is not None and sample < len(pairs):
+    if sample is not None and sample > 0 and sample < len(pairs):
         pairs = random.Random(seed).sample(pairs, sample)
 
     mism = 0
     for r, vc in pairs:
-        key = (tuple(grid.value_filled(r, ci) for ci, _ in idx_cols),
-               _metric_name(table, header_row, vc), period)
-        got = lut.get(key, _MISSING)
-        src = grid.at(r, vc)
-        if got is _MISSING or not _eq(got, src):
+        exp = (tuple(_norm(grid.value_filled(r, ci)) for ci, _ in idx_cols),
+               _norm(_metric_name(table, header_row, vc)), _norm(period),
+               _norm(grid.at(r, vc)))
+        if actual.get(exp, 0) <= 0:
             mism += 1
             if mism <= 5:
-                shown = "MISSING" if got is _MISSING else repr(got)
-                issues.append(f"{table.name}: source cell ({r},{vc})={src!r} "
-                              f"missing/mismatched in output (got {shown})")
+                issues.append(f"{table.name}: source cell ({r},{vc})={grid.at(r, vc)!r} "
+                              f"not found in output under {exp[:3]}")
     if mism > 5:
         issues.append(f"{table.name}: ...and {mism - 5} more sampled cell mismatches")
     return issues
