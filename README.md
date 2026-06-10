@@ -47,6 +47,8 @@ Designed for **on-prem / in-house** use (data never leaves the building), so it 
 ## Why
 
 I'm a market-intelligence analyst. Every month, research firms send Excel files that are beautiful to look at and terrible to analyze: merged cells, three-level headers, subtotal rows mixed into the data — and a slightly different layout each quarter. Cleaning them by hand took hours, and one mis-copied cell could silently corrupt a whole time series. Moa is the tool I wished existed: describe the template **once**, then turn every future file into the same clean, **verified** table.
+And there's a constraint that makes this harder: research-firm Excel usually can't leave the building, so cloud AI isn't an option. Moa is built to run where the data lives — alongside on-prem agents and in-house LLMs.
+
 
 ---
 
