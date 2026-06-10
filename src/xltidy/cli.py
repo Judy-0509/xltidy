@@ -107,7 +107,7 @@ def sample_spec():
 def apply(spec: str, file: str = typer.Option(None), grid: str = typer.Option(None),
           sheet: str = typer.Option(None), period: str = typer.Option(None),
           out_dir: str = typer.Option(...), fmt: str = typer.Option("csv", "--format"),
-          verify: bool = typer.Option(False, "--verify",
+          verify: bool = typer.Option(True, "--verify/--no-verify",
                                       help="count check + random sample round-trip"),
           sample: int = typer.Option(50, "--sample", help="sampled cells per table (0 = all)")):
     sp = TemplateSpec.from_yaml(spec)
@@ -135,7 +135,7 @@ def apply(spec: str, file: str = typer.Option(None), grid: str = typer.Option(No
 @app.command()
 def consolidate(spec: str, files: str, out_dir: str = typer.Option(...),
                 fmt: str = typer.Option("csv", "--format"), on_drift: str = typer.Option("stop"),
-                verify: bool = typer.Option(False, "--verify",
+                verify: bool = typer.Option(True, "--verify/--no-verify",
                                             help="count check + random sample round-trip"),
                 sample: int = typer.Option(50, "--sample", help="sampled cells per table (0 = all)")):
     from .extract import extract as ex, list_sheets

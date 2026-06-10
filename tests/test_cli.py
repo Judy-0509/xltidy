@@ -35,7 +35,20 @@ def test_apply_cmd_writes_folder(tmp_path):
     gp = tmp_path / "grid.json"; gp.write_text(sample_grid().model_dump_json(), encoding="utf-8")
     sp = tmp_path / "spec.yaml"; TemplateSpec.model_validate(sample_spec_dict()).to_yaml(sp)
     out = tmp_path / "db"
+    # no --verify flag: verification now runs by DEFAULT and must pass on clean data
     r = runner.invoke(app, ["apply", str(sp), "--grid", str(gp), "--sheet", "데이터",
                             "--period", "2024Q1", "--out-dir", str(out)])
+    assert r.exit_code == 0, r.stdout
+    assert (out / "by_industry.csv").exists()
+
+
+def test_apply_no_verify_turns_it_off(tmp_path):
+    # --verify is default-on; --no-verify must parse and still write the folder.
+    from xltidy.spec import TemplateSpec, sample_spec_dict
+    gp = tmp_path / "grid.json"; gp.write_text(sample_grid().model_dump_json(), encoding="utf-8")
+    sp = tmp_path / "spec.yaml"; TemplateSpec.model_validate(sample_spec_dict()).to_yaml(sp)
+    out = tmp_path / "db2"
+    r = runner.invoke(app, ["apply", str(sp), "--grid", str(gp), "--sheet", "데이터",
+                            "--period", "2024Q1", "--out-dir", str(out), "--no-verify"])
     assert r.exit_code == 0, r.stdout
     assert (out / "by_industry.csv").exists()
