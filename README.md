@@ -12,10 +12,17 @@
   <img alt="no openpyxl" src="https://img.shields.io/badge/openpyxl-banned-critical">
   <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20%2B%20Excel-lightgrey">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green">
+  <a href="https://github.com/Judy-0509/moa/releases"><img alt="release" src="https://img.shields.io/github/v/release/Judy-0509/moa"></a>
 </p>
 
 <p align="center"><sub><b>Moa</b> (모아) — from Korean <i>모으다</i> "to gather": gather scattered Excel into one clean DB.<br>
 CLI command is <code>moa</code> (the legacy <code>xltidy</code> command still works; the package imports as <code>xltidy</code>).</sub></p>
+
+<p align="center"><sub>🚧 <b>Status:</b> early stage (v0.1.x). The CLI works end-to-end today; the API may still change. Issues &amp; feedback welcome. · 초기 버전입니다 — CLI는 동작하며 API는 바뀔 수 있어요. 피드백 환영!</sub></p>
+
+<p align="center">
+  <img alt="Before: survey Excel with merged cells, multi-level headers and subtotal rows. After: tidy long-format table, reconciled and verified." src="docs/assets/moa-before-after.svg" width="100%">
+</p>
 
 ---
 
@@ -48,6 +55,12 @@ Designed for **on-prem / in-house** use (data never leaves the building), so it 
 - **파일당 1회만 열기**: 파일을 한 번만 열고 헤드리스 Excel 프로세스를 항상 종료 — 좀비 `EXCEL.EXE` 없음.
 
 데이터가 **사내 밖으로 나가지 않는** 온프렘 환경을 전제로 설계되어, 자체 호스팅 Qwen과 함께 쓰고 **opencode/Claude 스킬**로 제공됩니다.
+
+## Why · 만든 이유
+
+I'm a market-intelligence analyst. Every month, research firms send Excel files that are beautiful to look at and terrible to analyze: merged cells, three-level headers, subtotal rows mixed into the data — and a slightly different layout each quarter. Cleaning them by hand took hours, and one mis-copied cell could silently corrupt a whole time series. Moa is the tool I wished existed: describe the template **once**, then turn every future file into the same clean, **verified** table.
+
+저는 Market Intelligence 애널리스트입니다. 조사기관에서 매달 받는 엑셀은 보기엔 좋지만 분석하기엔 최악이었습니다 — 병합셀, 3단 헤더, 데이터 사이에 끼어 있는 소계 행, 그리고 분기마다 조금씩 달라지는 양식. 손으로 정리하면 몇 시간씩 걸렸고, 셀 하나만 잘못 옮겨도 시계열 전체가 조용히 오염됐습니다. Moa는 그래서 만들었습니다: 양식을 **한 번만** 정의하면, 이후의 모든 파일이 동일한 **검증된** 테이블로 정리됩니다.
 
 ---
 
