@@ -1,4 +1,6 @@
-<h1 align="center">Moa · 모아</h1>
+<p align="center">
+  <img alt="Moa — scattered, messy spreadsheet cells gathering into one clean, tidy table" src="docs/assets/moa-banner.png" width="100%">
+</p>
 
 <p align="center"><b>English</b> · <a href="README.ko.md">한국어</a></p>
 
@@ -16,14 +18,10 @@
   <a href="https://github.com/Judy-0509/moa/releases"><img alt="release" src="https://img.shields.io/github/v/release/Judy-0509/moa"></a>
 </p>
 
-<p align="center"><sub><b>Moa</b> (모아) — from Korean <i>모으다</i> "to gather": gather scattered Excel into one clean DB.<br>
+<p align="center"><sub><b>Moa</b> — from the Korean verb "to gather": gather scattered Excel into one clean DB.<br>
 CLI command is <code>moa</code> (the legacy <code>xltidy</code> command still works; the package imports as <code>xltidy</code>).</sub></p>
 
 <p align="center"><sub>🚧 <b>Status:</b> early stage (v0.1.x). The CLI works end-to-end today; the API may still change. Issues &amp; feedback welcome.</sub></p>
-
-<p align="center">
-  <img alt="Before: survey Excel with merged cells, multi-level headers and subtotal rows. After: tidy long-format table, reconciled and verified." src="docs/assets/moa-before-after.svg" width="100%">
-</p>
 
 ---
 
@@ -41,6 +39,10 @@ Survey Excel files are hard: merged cells, multi-level headers, subtotal rows, p
 - **One open per workbook**: each file is opened once and the headless Excel process is always terminated — no orphaned `EXCEL.EXE`.
 
 Designed for **on-prem / in-house** use (data never leaves the building), so it pairs with a self-hosted Qwen and ships as an **opencode/Claude skill**.
+
+<p align="center">
+  <img alt="Before: survey Excel with merged cells, multi-level headers and subtotal rows. After: tidy long-format table, reconciled and verified." src="docs/assets/moa-before-after.svg" width="100%">
+</p>
 
 ## Why
 
