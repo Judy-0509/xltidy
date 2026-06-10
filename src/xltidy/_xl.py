@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 import xlwings as xw
 
 
@@ -36,3 +38,25 @@ def quit_app(app) -> None:
         app.kill()  # quit 이 프로세스를 남겼으면 강제 종료(이 인스턴스만)
     except Exception:
         pass
+
+
+@contextlib.contextmanager
+def open_book(path: str, *, read_only: bool = True):
+    """워크북을 1회 열고 raw xlwings ``Book`` 을 제공한다. 끝나면 **항상**
+    저장 없이 닫고(SaveChanges=False) 인스턴스를 종료한다.
+
+    - 저장하지 않으므로 필터 해제 등으로 메모리상 더럽혀져도 **디스크 원본은 보존**.
+    - open 이 실패해도 finally 의 quit_app 로 좀비 EXCEL.EXE 가 남지 않는다.
+    """
+    app = new_app()
+    try:
+        wb = app.books.open(path, read_only=read_only, update_links=False)
+        try:
+            yield wb
+        finally:
+            try:
+                wb.api.Close(SaveChanges=False)
+            except Exception:
+                pass
+    finally:
+        quit_app(app)

@@ -71,36 +71,62 @@ def finalize_pivot(raw: pd.DataFrame, table: TableSpec, *, period: str | None) -
     return out
 
 
-def apply_workbook(path: str, spec: TemplateSpec, *, sheet_extractor=None,
-                   pivot_extractor=None, list_sheets_fn=None,
-                   period: str | None = None, filename: str | None = None,
-                   verify: bool = False, verify_sample: int | None = 50) -> ApplyResult:
-    if sheet_extractor is None:
-        from .extract import extract as sheet_extractor
-    if pivot_extractor is None:
-        from .pivot import extract_pivot as pivot_extractor
-    fname = filename if filename is not None else path
+def apply_session(session, spec: TemplateSpec, *, period: str | None = None,
+                  filename: str | None = None, verify: bool = False,
+                  verify_sample: int | None = 50) -> ApplyResult:
+    """열린 워크북 세션(.grid/.pivot)에 스펙을 적용한다.
 
+    **표를 먼저** 처리한 뒤 피벗을 처리한다 — 피벗 필터 해제가 워크북을
+    더럽히기 전에 표 grid 를 읽어두기 위함(세션이 시트별로 캐시).
+    """
+    fname = filename
     tables: dict[str, pd.DataFrame] = {}
     issues: list[str] = []
     verify_issues: list[str] = []
-    for sheet in spec.sheets:
-        skey = sheet.sheet_match.value
-        for table in sheet.tables:
-            if table.kind == "table":
-                grid = sheet_extractor(path, skey)
-                pval = period if period is not None else resolve_period(table.period, fname, grid)
-                frame = apply_table(grid, table, period=pval)
-                tables[table.name] = frame
-                issues += reconcile_table(grid, table)
-                if verify:
-                    from .verify import verify_table
-                    verify_issues += verify_table(grid, table, frame, period=pval, sample=verify_sample)
-            else:  # pivot
-                raw, gt = pivot_extractor(path, skey, table.pivot_name)
-                pval = period if period is not None else resolve_period(table.period, fname, None)
-                frame = finalize_pivot(raw, table, period=pval)
-                tables[table.name] = frame
-                issues += reconcile_pivot(float(frame["value"].sum()), gt, table.name)
+
+    table_items = [(s.sheet_match.value, t) for s in spec.sheets for t in s.tables if t.kind == "table"]
+    pivot_items = [(s.sheet_match.value, t) for s in spec.sheets for t in s.tables if t.kind != "table"]
+
+    for skey, table in table_items:
+        grid = session.grid(skey)
+        pval = period if period is not None else resolve_period(table.period, fname, grid)
+        frame = apply_table(grid, table, period=pval)
+        tables[table.name] = frame
+        issues += reconcile_table(grid, table)
+        if verify:
+            from .verify import verify_table
+            verify_issues += verify_table(grid, table, frame, period=pval, sample=verify_sample)
+
+    for skey, table in pivot_items:
+        # period=cell 인 피벗은 필터 해제 전 상태의 grid 가 필요 → 먼저 읽어 캐시
+        pgrid = session.grid(skey) if (period is None and table.period.source.cell) else None
+        raw, gt = session.pivot(skey, table.pivot_name)
+        pval = period if period is not None else resolve_period(table.period, fname, pgrid)
+        frame = finalize_pivot(raw, table, period=pval)
+        tables[table.name] = frame
+        issues += reconcile_pivot(float(frame["value"].sum()), gt, table.name)
+
     return ApplyResult(tables=tables, reconcile=ReconcileReport(ok=not issues, issues=issues),
                        verify=verify_issues)
+
+
+def apply_workbook(path: str, spec: TemplateSpec, *, session=None, sheet_extractor=None,
+                   pivot_extractor=None, list_sheets_fn=None,
+                   period: str | None = None, filename: str | None = None,
+                   verify: bool = False, verify_sample: int | None = 50) -> ApplyResult:
+    """스펙을 워크북에 적용. 세션을 받으면 재사용, 주입 추출기를 받으면 어댑터로
+    감싸고(테스트/--grid), 아무것도 없으면 **파일을 1회만** 연다."""
+    fname = filename if filename is not None else path
+    if session is not None:
+        return apply_session(session, spec, period=period, filename=fname,
+                             verify=verify, verify_sample=verify_sample)
+    if sheet_extractor is not None or pivot_extractor is not None:
+        from .session import FnSession
+        sess = FnSession(path, list_sheets_fn, sheet_extractor, pivot_extractor)
+        return apply_session(sess, spec, period=period, filename=fname,
+                             verify=verify, verify_sample=verify_sample)
+    from .session import open_excel_session
+    has_pivot = any(t.kind != "table" for s in spec.sheets for t in s.tables)
+    with open_excel_session(path, read_only=not has_pivot) as sess:
+        return apply_session(sess, spec, period=period, filename=fname,
+                             verify=verify, verify_sample=verify_sample)

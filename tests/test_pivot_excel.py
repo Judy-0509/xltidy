@@ -21,6 +21,17 @@ def _build_pivot(app, path):
     wb.save(path); wb.close()
 
 
+def _hide_row_item(app, path, field, item):
+    """저장된 피벗에서 한 행 항목을 숨겨(필터) 둔다."""
+    wb = app.books.open(path)
+    try:
+        pt = wb.sheets["피벗"].api.PivotTables(1)
+        pt.PivotFields(field).PivotItems(item).Visible = False
+        wb.save()
+    finally:
+        wb.close()
+
+
 @pytest.mark.excel
 def test_extract_pivot_long_and_grand_total(tmp_path):
     from xltidy.pivot import extract_pivot
@@ -34,3 +45,52 @@ def test_extract_pivot_long_and_grand_total(tmp_path):
     assert float(frame["value"].sum()) == 42.0  # 소계/총합계 셀은 제외됨
     assert gt == 42.0
     assert set(frame["region"]) == {"서울", "부산"}
+
+
+@pytest.mark.excel
+def test_apply_workbook_real_single_open(tmp_path):
+    # 실제 open-once 경로(open_excel_session -> ExcelSession.grid -> apply_session) 검증
+    from xltidy.apply import apply_workbook
+    from xltidy.spec import TemplateSpec, sample_spec_dict
+    path = str(tmp_path / "tbl.xlsx")
+    app = xw.App(visible=False, add_book=False)
+    try:
+        wb = app.books.add()
+        sht = wb.sheets[0]; sht.name = "데이터"
+        sht.range("B5").value = [["산업", "2024년 1월", "2024년 2월"],
+                                 ["제조업", 100, 110],
+                                 ["서비스업", 200, 210],
+                                 ["합계", 300, 320]]
+        wb.save(path); wb.close()
+    finally:
+        app.quit()
+    spec = TemplateSpec.model_validate(sample_spec_dict())
+    res = apply_workbook(path, spec, period="2024Q1")  # 주입 없이 = 파일 1회 열기
+    assert set(res.tables) == {"by_industry"}
+    assert len(res.tables["by_industry"]) == 4   # 산업 2 x 월 2
+    assert res.reconcile.ok                        # 합계 소계 == 성분 합
+
+
+@pytest.mark.excel
+def test_extract_pivot_clears_filters_to_get_all_data(tmp_path):
+    # 핵심 검증: 피벗에 필터(서울 숨김)가 걸려 있어도 기본(clear_filters=True)이면
+    # 전체 데이터를 돌려주고, clear_filters=False면 보이는(필터된) 부분만 준다.
+    from xltidy.pivot import extract_pivot
+    path = str(tmp_path / "pf.xlsx")
+    app = xw.App(visible=False, add_book=False)
+    try:
+        _build_pivot(app, path)
+        _hide_row_item(app, path, "지역", "서울")  # 서울 행 숨김 -> 부산만 보임
+    finally:
+        app.quit()
+
+    # 화면 그대로(필터 유지): 부산만 (20+8 = 28)
+    f_filt, _ = extract_pivot(path, "피벗", None, clear_filters=False)
+    assert set(f_filt["region"]) == {"부산"}
+    assert float(f_filt["value"].sum()) == 28.0
+
+    # 기본값(필터 해제): 전체 복원 (42), 두 지역 모두
+    f_all, gt_all = extract_pivot(path, "피벗", None)
+    assert set(f_all["region"]) == {"서울", "부산"}
+    assert float(f_all["value"].sum()) == 42.0
+    assert gt_all == 42.0

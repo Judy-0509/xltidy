@@ -138,20 +138,23 @@ def consolidate(spec: str, files: str, out_dir: str = typer.Option(...),
                 verify: bool = typer.Option(True, "--verify/--no-verify",
                                             help="count check + random sample round-trip"),
                 sample: int = typer.Option(50, "--sample", help="sampled cells per table (0 = all)")):
-    from .extract import extract as ex, list_sheets
-    from .pivot import extract_pivot
+    from .session import open_excel_session
     sp = TemplateSpec.from_yaml(spec)
+    has_pivot = any(t.kind != "table" for s in sp.sheets for t in s.tables)
     paths = sorted(_glob.glob(files))
-    res = _consolidate(paths, sp, list_sheets_fn=list_sheets, sheet_extractor=ex,
-                       pivot_extractor=extract_pivot, on_drift=on_drift,
-                       verify=verify, verify_sample=(None if sample <= 0 else sample))
+    res = _consolidate(paths, sp,
+                       session_factory=lambda p: open_excel_session(p, read_only=not has_pivot),
+                       on_drift=on_drift, verify=verify,
+                       verify_sample=(None if sample <= 0 else sample))
     for path, drift in res.drift_by_file.items():
         rprint(f"[yellow]drift[/] {path}: {drift}")
     for path, vissues in res.verify_by_file.items():
         rprint(f"[red]verify FAIL[/] {path}: {vissues}")
+    for issue in res.period_issues:
+        rprint(f"[red]period FAIL[/] {issue}")
     written = write_tables(res.tables, out_dir, fmt=fmt)
     rprint(f"[green]wrote[/] {len(written)} tables -> {out_dir}")
-    ok = not res.drift_by_file and not res.verify_by_file
+    ok = not res.drift_by_file and not res.verify_by_file and not res.period_issues
     raise typer.Exit(0 if ok else 2)
 
 

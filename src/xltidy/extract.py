@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ._xl import new_app, quit_app
+from ._xl import open_book
 from .models import Cell, CellGrid, MergedRange, SheetInfo
 
 _VIS = {-1: "visible", 0: "hidden", 2: "very_hidden"}
@@ -17,57 +17,55 @@ def _as_2d(value):
     return value
 
 
-def list_sheets(path: str) -> list[SheetInfo]:
-    app = new_app()
-    try:
-        wb = app.books.open(path, read_only=True, update_links=False)
+def sheet_infos(wb) -> list[SheetInfo]:
+    """이미 열린 워크북에서 모든 시트 정보(숨김·피벗수 포함)를 읽는다."""
+    infos: list[SheetInfo] = []
+    for i, sht in enumerate(wb.sheets, start=1):
+        used = sht.used_range
         try:
-            infos: list[SheetInfo] = []
-            for i, sht in enumerate(wb.sheets, start=1):
-                used = sht.used_range
-                try:
-                    ur, uc = used.last_cell.row, used.last_cell.column
-                    if used.value is None:
-                        ur = uc = 0
-                except Exception:
-                    ur = uc = 0
-                infos.append(SheetInfo(
-                    name=sht.name, index=i,
-                    visibility=_VIS.get(int(sht.api.Visible), "visible"),
-                    used_rows=ur, used_cols=uc,
-                    n_pivots=int(sht.api.PivotTables().Count)))
-            return infos
-        finally:
-            wb.close()
-    finally:
-        quit_app(app)
+            ur, uc = used.last_cell.row, used.last_cell.column
+            if used.value is None:
+                ur = uc = 0
+        except Exception:
+            ur = uc = 0
+        infos.append(SheetInfo(
+            name=sht.name, index=i,
+            visibility=_VIS.get(int(sht.api.Visible), "visible"),
+            used_rows=ur, used_cols=uc,
+            n_pivots=int(sht.api.PivotTables().Count)))
+    return infos
+
+
+def grid_from_sheet(wb, sheet: str | int | None = None) -> CellGrid:
+    """이미 열린 워크북의 한 시트를 CellGrid로 읽는다(값 없는 셀 제외)."""
+    sht = wb.sheets.active if sheet is None else wb.sheets[sheet]
+    used = sht.used_range
+    n_rows, n_cols = used.last_cell.row, used.last_cell.column
+    r0, c0 = used.row, used.column
+    vals = _as_2d(used.value)
+    fmls = _as_2d(used.formula)
+    cells: list[Cell] = []
+    for i, row_vals in enumerate(vals):
+        for j, val in enumerate(row_vals):
+            if val is None:
+                continue
+            f = fmls[i][j] if fmls else None
+            cells.append(Cell(row=r0 + i, col=c0 + j, value=val,
+                              formula=f if isinstance(f, str) and f.startswith("=") else None))
+    return CellGrid(sheet=sht.name, n_rows=n_rows, n_cols=n_cols,
+                    cells=cells, merged=_read_merged(sht, cells))
+
+
+def list_sheets(path: str) -> list[SheetInfo]:
+    """단발성: 파일을 1회 열어 시트 목록만 읽고 닫는다."""
+    with open_book(path) as wb:
+        return sheet_infos(wb)
 
 
 def extract(path: str, sheet: str | int | None = None) -> CellGrid:
-    app = new_app()
-    try:
-        wb = app.books.open(path, read_only=True, update_links=False)
-        try:
-            sht = wb.sheets.active if sheet is None else wb.sheets[sheet]
-            used = sht.used_range
-            n_rows, n_cols = used.last_cell.row, used.last_cell.column
-            r0, c0 = used.row, used.column
-            vals = _as_2d(used.value)
-            fmls = _as_2d(used.formula)
-            cells: list[Cell] = []
-            for i, row_vals in enumerate(vals):
-                for j, val in enumerate(row_vals):
-                    if val is None:
-                        continue
-                    f = fmls[i][j] if fmls else None
-                    cells.append(Cell(row=r0 + i, col=c0 + j, value=val,
-                                      formula=f if isinstance(f, str) and f.startswith("=") else None))
-            return CellGrid(sheet=sht.name, n_rows=n_rows, n_cols=n_cols,
-                            cells=cells, merged=_read_merged(sht, cells))
-        finally:
-            wb.close()
-    finally:
-        quit_app(app)
+    """단발성: 파일을 1회 열어 한 시트를 읽고 닫는다."""
+    with open_book(path) as wb:
+        return grid_from_sheet(wb, sheet)
 
 
 def _read_merged(sht, cells: list[Cell]) -> list[MergedRange]:
