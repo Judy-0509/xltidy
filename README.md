@@ -146,6 +146,19 @@ Copy-Item ".\skills\excel-to-db\SKILL.md" ".\.claude\skills\xltidy\SKILL.md" -Fo
 
 Then in opencode the agent calls `skill({ name: "xltidy" })`. · 이후 opencode에서 에이전트가 `skill({ name: "xltidy" })`로 호출.
 
+### `/xltidy` slash command · 슬래시 명령
+
+A **skill** is auto-invoked by the agent (you ask in natural language, the model loads it). To trigger the workflow explicitly by typing **`/xltidy`**, use a **command** instead — a self-contained one ships at [`.opencode/commands/xltidy.md`](.opencode/commands/xltidy.md). · **skill**은 에이전트가 자동 호출하고, **command**는 사용자가 `/`로 직접 호출합니다.
+
+- Open this repo in opencode → `/xltidy <파일>` works out of the box (no skill copy, no Qwen API — opencode's own model runs it). · 이 레포를 opencode로 열면 `/xltidy`가 바로 동작 (스킬 복사·Qwen API 불필요, opencode 자체 모델이 수행).
+- Make it available everywhere · 전역 사용:
+
+```powershell
+$cmd = "$env:USERPROFILE\.config\opencode\commands"
+New-Item -ItemType Directory -Force -Path $cmd | Out-Null
+Copy-Item ".\.opencode\commands\xltidy.md" "$cmd\xltidy.md" -Force
+```
+
 The skill drives the whole workflow (sheet selection → spec authoring → apply → consolidate). Since the agent already runs on an LLM (e.g., your in-house Qwen), no separate Qwen API call is needed. · 스킬이 전체 워크플로를 수행하며, 에이전트 자체가 LLM(사내 Qwen 등) 위에서 돌므로 별도 Qwen 호출이 필요 없습니다.
 
 ## Constraints · 제약
