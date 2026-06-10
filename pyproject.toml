@@ -7,7 +7,7 @@ name = "xltidy"
 version = "0.1.0"
 description = "xlwings-only Excel -> tidy per-workbook folder of tables, with reusable TemplateSpec"
 requires-python = ">=3.10"
-dependencies = ["xlwings>=0.31", "pandas>=2.0", "pydantic>=2.5", "pyyaml>=6.0", "typer>=0.12", "rich>=13.0"]
+dependencies = ["xlwings>=0.31", "pandas>=2.0", "pydantic>=2.5", "pyyaml>=6.0", "typer>=0.12", "click>=8.1,<8.2", "rich>=13.0"]
 
 [project.optional-dependencies]
 parquet = ["pyarrow>=15.0"]
