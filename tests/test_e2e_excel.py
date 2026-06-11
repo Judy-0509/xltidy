@@ -41,17 +41,17 @@ def test_workbook_table_and_pivot(tmp_path):
                 "value_block": {"cols": ["C", "C"]},
                 "unpivot": {"var_name": "metric", "value_name": "value"},
                 "column_semantics": [{"source": "C2", "name": "인구", "type": "number"}],
-                "period": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "period"},
+                "version": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "version"},
                 "totals": [{"kind": "row_subtotal", "label": "합계", "over": "region"}]}]},
             {"sheet_match": {"by": "name", "value": "피벗"}, "tables": [{
                 "name": "pivot_pop", "kind": "pivot", "pivot_name": None,
-                "period": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "period"}}]},
+                "version": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "version"}}]},
         ]})
 
     res = apply_workbook(path, spec, sheet_extractor=extract, pivot_extractor=extract_pivot,
                          list_sheets_fn=list_sheets, filename=path)
     assert set(res.tables) == {"region_pop", "pivot_pop"}
     rp = res.tables["region_pop"]
-    assert len(rp) == 2 and set(rp["region"]) == {"서울"} and set(rp["period"]) == {"2024-1"}
+    assert len(rp) == 2 and set(rp["region"]) == {"서울"} and set(rp["version"]) == {"2024Q1"}
     assert res.reconcile.ok is True
     assert float(res.tables["pivot_pop"]["value"].sum()) == 30.0

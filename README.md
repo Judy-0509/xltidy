@@ -21,7 +21,7 @@
 <p align="center"><sub><b>Moa</b> — from the Korean verb "to gather": gather scattered Excel into one clean DB.<br>
 CLI command is <code>moa</code> (the legacy <code>xltidy</code> command still works; the package imports as <code>moa</code>).</sub></p>
 
-<p align="center"><sub>🚧 <b>Status:</b> early stage (v0.1.x). The CLI works end-to-end today; the API may still change. Issues &amp; feedback welcome.</sub></p>
+<p align="center"><sub>🚧 <b>Status:</b> early stage (v0.2.x). The CLI works end-to-end today; the API may still change. Issues &amp; feedback welcome.</sub></p>
 
 ---
 
@@ -31,10 +31,10 @@ CLI command is <code>moa</code> (the legacy <code>xltidy</code> command still wo
 
 Survey Excel files are hard: merged cells, multi-level headers, subtotal rows, pivot tables, and the *same template repeated every month/quarter*. Moa reads them with a **live Excel via `xlwings`** (so formula values, formats, and pivots are real), then applies a **reusable `TemplateSpec`** deterministically:
 
-- **One workbook → one output folder** (one tidy CSV/Parquet file per sheet/table) — *"1 Excel = 1 DB"*.
+- **One workbook → one combined `db.csv`** (all tables stacked with a `table` column; `--per-table` writes one file per table instead) — *"1 Excel = 1 DB"*.
 - **Regular tables**: an LLM (your in-house Qwen, or an [opencode](https://opencode.ai)/Claude agent) infers the *structure only* once per template; the actual numbers are read deterministically from the spreadsheet — **the LLM never transcribes values**.
 - **Pivot tables**: extracted natively via Excel COM (`PivotTables`) — no LLM needed. **All filters are cleared first** (report/page filters, hidden row/column items, slicers/timelines) so you get the **full dataset**, not the filtered view.
-- **Version consolidation**: stack monthly/quarterly files into one time series with a `period` dimension, and **flag drift** when a new file no longer matches the template (renamed columns, missing sheets, shifted regions) or when two versions resolve to the **same / unresolved period**.
+- **Version consolidation**: stack monthly/quarterly files into one time series with a `version` dimension (the matched filename token, e.g. `2024Q1`), and **flag drift** when a new file no longer matches the template (renamed columns, missing sheets, shifted regions) or when two files resolve to the **same / unresolved version**.
 - **Integrity first**: every run reconciles (table subtotal == sum of components; pivot data sum == grand total), and **output verification runs by default** (row-count + random sample round-trip).
 - **One open per workbook**: each file is opened once and the headless Excel process is always terminated — no orphaned `EXCEL.EXE`.
 
@@ -61,9 +61,9 @@ And there's a constraint that makes this harder: research-firm Excel usually can
    kind=table:  extract (xlwings) ─▶ CellGrid ─ encode ─▶ [agent/Qwen] ─▶ TableSpec   (structure only)
    kind=pivot:  pivot (COM, filters cleared) ──────────────────────────▶ TableSpec   (LLM-free)
                                                             │
-   each monthly/quarterly file + TemplateSpec ─ apply ─▶ {table: tidy long(+period)} + reconcile + verify
+   each monthly/quarterly file + TemplateSpec ─ apply ─▶ {table: tidy long(+version)} + reconcile + verify
                                                             │
-   many files ─ consolidate ─▶ per-table period stacking + drift/period checks ─▶ output folder (<table>.csv/.parquet)
+   many files ─ consolidate ─▶ version stacking + drift/version checks ─▶ one combined db.csv/.parquet (--per-table for per-table files)
 ```
 
 The LLM only ever produces the `TemplateSpec` (coordinates and structure). Deterministic code reads the real values.
@@ -120,20 +120,22 @@ moa sheets report_2024Q1.xlsx
 #    table sheets: get an encoding for the agent to fill the spec
 moa infer report_2024Q1.xlsx --sheet 데이터 --backend agent
 moa sample-spec            # need the YAML shape? prints a valid skeleton
-#    pivot sheets: just write `kind: pivot` + pivot_name + period in the spec
+#    pivot sheets: just write `kind: pivot` + pivot_name + version in the spec
 #    (filters are cleared automatically at extraction time)
 
 # 2) Validate
 moa spec-validate specs/employment.yaml --against report_2024Q1.xlsx --sheet 데이터
 
-# 3) Apply one workbook → one folder of tidy tables
+# 3) Apply one workbook → one combined db.csv (use --per-table for one file per table)
 moa apply specs/employment.yaml --file report_2024Q1.xlsx --out-dir out/2024Q1 --format csv
 
-# 4) Consolidate monthly/quarterly versions
+# 4) Consolidate monthly/quarterly versions (accepts globs and/or explicit paths)
 moa consolidate specs/employment.yaml "data/2024*.xlsx" --out-dir merged --format parquet --on-drift stop
 ```
 
-`reconcile` mismatches (subtotal ≠ sum, pivot data ≠ grand total), `drift` (renamed headers, missing selected sheets), and `period` collisions (two versions resolving to the same / unresolved period) are reported; drifted files are **excluded** under `--on-drift stop`.
+`moa consolidate` prints **per-file progress** (`[2/12] processing ... OK -> 1,234 rows, version=2024Q2`) and a final **summary table** (file / status / rows / version / note).
+
+`reconcile` mismatches (subtotal ≠ sum, pivot data ≠ grand total), `drift` (renamed headers, missing selected sheets), and `version` collisions (two files resolving to the same / unresolved version) are reported; drifted files are **excluded** under `--on-drift stop`.
 
 **Output verification runs by default** — a row-count check plus a random **sample round-trip** (source cells → output), which works even when the sheet has no subtotals. `--sample N` sets the sampled cell count (`0` = check all); `--no-verify` skips it.
 
@@ -194,8 +196,8 @@ src/moa/                        (package imports as `moa`; CLI command is `moa`)
   reconcile.py    table subtotal==sum · pivot data==grand total
   verify.py       independent output check (row count + random sample round-trip)
   apply.py        apply_table / finalize_pivot / apply_session / apply_workbook
-  dbio.py         write_tables -> per-workbook folder of CSV/Parquet
-  consolidate.py  detect_drift (sheet/column/region) + period-collision guard + consolidate
+  dbio.py         write_tables -> one combined db.csv/.parquet (default) or per-table files
+  consolidate.py  detect_drift (sheet/column/region) + version-collision guard + consolidate
   config.py       MOA_QWEN_* env
   infer.py        agent prompt builder + optional Qwen backend
   _xl.py          headless Excel lifecycle: new_app / quit_app (kill backstop) / open_book
@@ -207,6 +209,10 @@ src/moa/                        (package imports as `moa`; CLI command is `moa`)
 .opencode/commands/moa.md          /moa slash command
 docs/superpowers/                  design spec + implementation plan
 ```
+
+## Brand Prompts
+
+Stable illustration prompts for Moa and Seulgy are kept in [docs/brand-prompts.md](docs/brand-prompts.md). They are meant for repeatable character generation across README assets, articles, and presentation slides.
 
 ## Roadmap
 

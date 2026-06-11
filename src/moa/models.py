@@ -26,6 +26,12 @@ class CellGrid(BaseModel):
     n_cols: int
     cells: list[Cell] = []
     merged: list[MergedRange] = []
+    # Excel이 이미 알고 있는 구조(ListObject/피벗 범위/명명 범위) 한 줄씩.
+    # encode가 그대로 LLM 프롬프트에 싣는다 — 추론이 아니라 확정 정보.
+    hints: list[str] = []
+    # 열 idx -> 대표 number format (General 제외). 값 열의 의미(%, 날짜, 통화)
+    # 구분용. 열당 1셀만 샘플링하므로 혼합 서식 열은 마지막 값 셀 기준.
+    col_formats: dict[int, str] = {}
 
     # Lazily-built (row, col) -> value lookup, cached so at()/value_filled are O(1).
     # Built once on first access. Do NOT mutate `cells` after the first lookup

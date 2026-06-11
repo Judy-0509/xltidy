@@ -1,24 +1,31 @@
 from tests.fixtures import sample_grid, sample_pivot_raw
 from moa.models import Cell, CellGrid, MergedRange
-from moa.spec import TemplateSpec, sample_spec_dict
-from moa.apply import apply_table, finalize_pivot, resolve_period, apply_workbook
+from moa.spec import TemplateSpec, VersionSpec, sample_spec_dict
+from moa.apply import apply_table, apply_workbook, finalize_pivot, resolve_version
 
 
 def _table():
     return TemplateSpec.model_validate(sample_spec_dict()).sheets[0].tables[0]
 
 
-def test_resolve_period_from_filename():
-    assert resolve_period(_table().period, "report_2024Q1.xlsx", sample_grid()) == "2024-1"
+def test_resolve_version_from_filename():
+    assert resolve_version(_table().version, "report_2024Q1.xlsx", sample_grid()) == "2024Q1"
+
+
+def test_resolve_version_uses_full_regex_match():
+    version = VersionSpec.model_validate(
+        {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "version"}
+    )
+    assert resolve_version(version, "고용조사_2024Q1.xlsx", sample_grid()) == "2024Q1"
 
 
 def test_apply_table_long_excludes_subtotal():
-    df = apply_table(sample_grid(), _table(), period="2024Q1")
+    df = apply_table(sample_grid(), _table(), version="2024Q1")
     assert len(df) == 4
-    assert set(df.columns) == {"industry", "month", "value", "period"}
+    assert set(df.columns) == {"industry", "month", "value", "version"}
     assert "합계" not in set(df["industry"])
     row = df[(df.industry == "제조업") & (df.month == "2024-01")].iloc[0]
-    assert row["value"] == 100.0 and row["period"] == "2024Q1"
+    assert row["value"] == 100.0 and row["version"] == "2024Q1"
 
 
 def test_apply_table_fills_merged_index():
@@ -38,21 +45,21 @@ def test_apply_table_fills_merged_index():
                 "value_block": {"cols": ["C", "C"]},
                 "unpivot": {"var_name": "metric", "value_name": "value"},
                 "column_semantics": [{"source": "C2", "name": "인구", "type": "number"}],
-                "period": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "period"},
+                "version": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "version"},
                 "totals": [{"kind": "row_subtotal", "label": "합계", "over": "region"}]}]}]}).sheets[0].tables[0]
-    df = apply_table(grid, table, period="2024Q1")
+    df = apply_table(grid, table, version="2024Q1")
     assert len(df) == 2 and set(df["region"]) == {"서울"}
 
 
-def test_finalize_pivot_attaches_period():
+def test_finalize_pivot_attaches_version():
     raw, _ = sample_pivot_raw()
     table = TemplateSpec.model_validate({
         "template_id": "p", "version": 1, "sheets": [{
             "sheet_match": {"by": "name", "value": "피벗"},
             "tables": [{"name": "pv", "kind": "pivot", "pivot_name": None,
-                "period": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "period"}}]}]}).sheets[0].tables[0]
-    df = finalize_pivot(raw, table, period="2024Q1")
-    assert "period" in df.columns and set(df["period"]) == {"2024Q1"}
+                "version": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "version"}}]}]}).sheets[0].tables[0]
+    df = finalize_pivot(raw, table, version="2024Q1")
+    assert "version" in df.columns and set(df["version"]) == {"2024Q1"}
     assert df["value"].sum() == 42.0
 
 
@@ -62,7 +69,7 @@ def test_apply_workbook_table_plus_pivot_injected():
             sample_spec_dict()["sheets"][0],
             {"sheet_match": {"by": "name", "value": "피벗"},
              "tables": [{"name": "pv", "kind": "pivot", "pivot_name": None,
-                         "period": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "period"}}]},
+                         "version": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "version"}}]},
         ]})
     grids = {"데이터": sample_grid()}
     res = apply_workbook(

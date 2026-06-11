@@ -10,23 +10,23 @@ def _table():
 
 def test_verify_ok_full_sample():
     t = _table()
-    frame = apply_table(sample_grid(), t, period="2024Q1")
+    frame = apply_table(sample_grid(), t, version="2024Q1")
     # sample=None -> check every cell round-tripped
-    assert verify_table(sample_grid(), t, frame, period="2024Q1", sample=None) == []
+    assert verify_table(sample_grid(), t, frame, version="2024Q1", sample=None) == []
 
 
 def test_verify_flags_count_mismatch():
     t = _table()
-    frame = apply_table(sample_grid(), t, period="2024Q1").iloc[:2]  # drop rows
-    issues = verify_table(sample_grid(), t, frame, period="2024Q1", sample=None)
+    frame = apply_table(sample_grid(), t, version="2024Q1").iloc[:2]  # drop rows
+    issues = verify_table(sample_grid(), t, frame, version="2024Q1", sample=None)
     assert any("row count" in i for i in issues)
 
 
 def test_verify_flags_value_mismatch():
     t = _table()
-    frame = apply_table(sample_grid(), t, period="2024Q1").copy()
+    frame = apply_table(sample_grid(), t, version="2024Q1").copy()
     frame.loc[0, "value"] = 99999.0  # corrupt one output value
-    issues = verify_table(sample_grid(), t, frame, period="2024Q1", sample=None)
+    issues = verify_table(sample_grid(), t, frame, version="2024Q1", sample=None)
     assert issues
 
 
@@ -48,7 +48,7 @@ def _dup_grid_and_table():
                 "value_block": {"cols": ["C", "C"]},
                 "unpivot": {"var_name": "metric", "value_name": "value"},
                 "column_semantics": [{"source": "C2", "name": "값", "type": "number"}],
-                "period": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "period"},
+                "version": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "version"},
                 "totals": [{"kind": "row_subtotal", "label": "합계", "over": "region"}]}]}]}).sheets[0].tables[0]
     return grid, table
 
@@ -57,9 +57,9 @@ def test_verify_handles_duplicate_index_labels():
     # Regression for the dict-overwrite collision bug: two rows labelled "서울"
     # with different values must both verify (Counter multiset), not collapse.
     grid, table = _dup_grid_and_table()
-    frame = apply_table(grid, table, period="2024Q1")
+    frame = apply_table(grid, table, version="2024Q1")
     assert len(frame) == 2
-    assert verify_table(grid, table, frame, period="2024Q1", sample=None) == []
+    assert verify_table(grid, table, frame, version="2024Q1", sample=None) == []
     # corrupting one of the duplicate rows must still be caught
     frame.loc[frame.index[0], "value"] = 12345.0
-    assert verify_table(grid, table, frame, period="2024Q1", sample=None)
+    assert verify_table(grid, table, frame, version="2024Q1", sample=None)

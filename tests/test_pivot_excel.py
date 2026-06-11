@@ -44,7 +44,36 @@ def test_extract_pivot_long_and_grand_total(tmp_path):
     frame, gt = extract_pivot(path, "피벗", None)
     assert float(frame["value"].sum()) == 42.0  # 소계/총합계 셀은 제외됨
     assert gt == 42.0
-    assert set(frame["region"]) == {"서울", "부산"}
+    assert set(frame["지역"]) == {"서울", "부산"}  # 행필드 이름 원형 유지(rename 없음)
+
+
+@pytest.mark.excel
+def test_extract_pivot_multi_data_field_keeps_first_only(tmp_path):
+    # 데이터 필드 2개: "Σ값" 의사필드가 축 카운트를 부풀려도 v1 셀만 정확히
+    # 추출돼야 한다(보정 없으면 전부 소계로 오인되어 빈 결과, 필터 없으면 v2 혼입).
+    from moa.pivot import extract_pivot
+    path = str(tmp_path / "p2.xlsx")
+    app = xw.App(visible=False, add_book=False)
+    try:
+        wb = app.books.add()
+        src = wb.sheets[0]; src.name = "src"
+        src.range("A1").value = [["지역", "구분", "v1", "v2"],
+                                 ["서울", "인구", 10, 1], ["서울", "가구", 4, 2],
+                                 ["부산", "인구", 20, 3], ["부산", "가구", 8, 4]]
+        pv = wb.sheets.add("피벗", after=src)
+        cache = wb.api.PivotCaches().Create(SourceType=1, SourceData="src!A1:D5")
+        pt = cache.CreatePivotTable(TableDestination=pv.range("A3").api, TableName="PT1")
+        pt.PivotFields("지역").Orientation = 1
+        d1 = pt.PivotFields("v1"); d1.Orientation = 4; d1.Function = -4157
+        d2 = pt.PivotFields("v2"); d2.Orientation = 4; d2.Function = -4157
+        wb.save(path); wb.close()
+    finally:
+        app.quit()
+    frame, gt = extract_pivot(path, "피벗", None)
+    assert float(frame["value"].sum()) == 42.0   # v1만 (v2 혼입 시 52)
+    assert len(frame) == 2                        # 지역 2행, 빈 결과 회귀 방지
+    assert set(frame["지역"]) == {"서울", "부산"}
+    assert gt == 42.0                             # v1의 총합계
 
 
 @pytest.mark.excel
@@ -65,7 +94,7 @@ def test_apply_workbook_real_single_open(tmp_path):
     finally:
         app.quit()
     spec = TemplateSpec.model_validate(sample_spec_dict())
-    res = apply_workbook(path, spec, period="2024Q1")  # 주입 없이 = 파일 1회 열기
+    res = apply_workbook(path, spec, version="2024Q1")  # 주입 없이 = 파일 1회 열기
     assert set(res.tables) == {"by_industry"}
     assert len(res.tables["by_industry"]) == 4   # 산업 2 x 월 2
     assert res.reconcile.ok                        # 합계 소계 == 성분 합
@@ -86,11 +115,11 @@ def test_extract_pivot_clears_filters_to_get_all_data(tmp_path):
 
     # 화면 그대로(필터 유지): 부산만 (20+8 = 28)
     f_filt, _ = extract_pivot(path, "피벗", None, clear_filters=False)
-    assert set(f_filt["region"]) == {"부산"}
+    assert set(f_filt["지역"]) == {"부산"}
     assert float(f_filt["value"].sum()) == 28.0
 
     # 기본값(필터 해제): 전체 복원 (42), 두 지역 모두
     f_all, gt_all = extract_pivot(path, "피벗", None)
-    assert set(f_all["region"]) == {"서울", "부산"}
+    assert set(f_all["지역"]) == {"서울", "부산"}
     assert float(f_all["value"].sum()) == 42.0
     assert gt_all == 42.0

@@ -29,7 +29,7 @@ def test_pivot_table_minimal():
     d["sheets"].append({
         "sheet_match": {"by": "name", "value": "피벗"},
         "tables": [{"name": "p", "kind": "pivot", "pivot_name": None,
-                    "period": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "period"}}],
+                    "version": {"source": {"from": "filename", "pattern": r"(\d{4})Q([1-4])"}, "name": "version"}}],
     })
     spec = TemplateSpec.model_validate(d)
     assert spec.sheets[1].tables[0].kind == "pivot"

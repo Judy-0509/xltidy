@@ -43,16 +43,16 @@ class UnpivotSpec(BaseModel):
     value_name: str = "value"
 
 
-class PeriodSource(BaseModel):
+class VersionSource(BaseModel):
     from_: Literal["filename", "cell"] = Field("filename", alias="from")
     pattern: str | None = None
     cell: str | None = None
     model_config = {"populate_by_name": True}
 
 
-class PeriodSpec(BaseModel):
-    source: PeriodSource
-    name: str = "period"
+class VersionSpec(BaseModel):
+    source: VersionSource
+    name: str = "version"
 
 
 class TotalCheck(BaseModel):
@@ -69,7 +69,7 @@ class Region(BaseModel):
 class TableSpec(BaseModel):
     name: str
     kind: Literal["table", "pivot"] = "table"
-    period: PeriodSpec
+    version: VersionSpec  # row provenance version; unrelated to TemplateSpec.version format version
     # kind=table
     region: Region | None = None
     header: HeaderSpec | None = None
@@ -133,7 +133,7 @@ def sample_spec_dict() -> dict:
                     {"source": "C5", "name": "2024-01", "type": "number", "source_text": "2024년 1월"},
                     {"source": "D5", "name": "2024-02", "type": "number", "source_text": "2024년 2월"},
                 ],
-                "period": {"source": {"from": "filename", "pattern": r"(\d{4})[._-]?Q?([1-4])"}, "name": "period"},
+                "version": {"source": {"from": "filename", "pattern": r"(\d{4})[._-]?Q?([1-4])"}, "name": "version"},
                 "totals": [{"kind": "row_subtotal", "label": "합계", "over": "industry"}],
             }],
         }],

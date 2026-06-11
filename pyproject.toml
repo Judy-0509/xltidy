@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "moa"
-version = "0.1.7"
-description = "Moa (모아) — xlwings-only Excel -> tidy per-workbook folder of tables, with reusable TemplateSpec"
+version = "0.2.0"
+description = "Moa: xlwings-only Excel-to-database ETL with reusable TemplateSpec, verification, and drift detection"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }

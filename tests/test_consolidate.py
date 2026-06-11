@@ -26,7 +26,7 @@ def test_drift_flags_renamed_header():
     assert any("C5" in i for i in issues)
 
 
-def test_consolidate_stacks_periods():
+def test_consolidate_stacks_versions():
     grids = {"데이터": sample_grid()}
     res = consolidate(
         ["f_2024Q1.xlsx", "f_2024Q2.xlsx"], _spec(),
@@ -34,13 +34,13 @@ def test_consolidate_stacks_periods():
         sheet_extractor=lambda p, s: grids[str(s)],
         pivot_extractor=lambda p, s, n: sample_pivot_raw(),
     )
-    assert set(res.tables["by_industry"]["period"]) == {"2024-1", "2024-2"}
+    assert set(res.tables["by_industry"]["version"]) == {"2024Q1", "2024Q2"}
     assert len(res.tables["by_industry"]) == 8
     assert res.drift_by_file == {}
 
 
-def test_consolidate_flags_period_collision():
-    # 두 파일이 같은 기간(2024-1)을 내면 합본에서 구분 불가 -> period_issues 로 신고
+def test_consolidate_flags_version_collision():
+    # 두 파일이 같은 버전(2024Q1)을 내면 합본에서 구분 불가 -> version_issues 로 신고
     grids = {"데이터": sample_grid()}
     res = consolidate(
         ["a_2024Q1.xlsx", "b_2024Q1.xlsx"], _spec(),
@@ -48,12 +48,12 @@ def test_consolidate_flags_period_collision():
         sheet_extractor=lambda p, s: grids[str(s)],
         pivot_extractor=lambda p, s, n: sample_pivot_raw(),
     )
-    assert res.period_issues
-    assert any("2024-1" in i for i in res.period_issues)
+    assert res.version_issues
+    assert any("2024Q1" in i for i in res.version_issues)
 
 
-def test_consolidate_flags_unresolved_period():
-    # 파일명에 기간이 없으면 period=None -> 버전 구분 불가로 신고
+def test_consolidate_flags_unresolved_version():
+    # 파일명에 버전이 없으면 version=None -> 버전 구분 불가로 신고
     grids = {"데이터": sample_grid()}
     res = consolidate(
         ["plain.xlsx"], _spec(),
@@ -61,10 +61,10 @@ def test_consolidate_flags_unresolved_period():
         sheet_extractor=lambda p, s: grids[str(s)],
         pivot_extractor=lambda p, s, n: sample_pivot_raw(),
     )
-    assert any("None" in i or "resolve" in i for i in res.period_issues)
+    assert any("None" in i or "resolve" in i for i in res.version_issues)
 
 
-def test_consolidate_no_period_issue_when_distinct():
+def test_consolidate_no_version_issue_when_distinct():
     grids = {"데이터": sample_grid()}
     res = consolidate(
         ["f_2024Q1.xlsx", "f_2024Q2.xlsx"], _spec(),
@@ -72,7 +72,7 @@ def test_consolidate_no_period_issue_when_distinct():
         sheet_extractor=lambda p, s: grids[str(s)],
         pivot_extractor=lambda p, s, n: sample_pivot_raw(),
     )
-    assert res.period_issues == []
+    assert res.version_issues == []
 
 
 def test_consolidate_stop_excludes_drift_file():
@@ -87,5 +87,48 @@ def test_consolidate_stop_excludes_drift_file():
         pivot_extractor=lambda p, s, n: sample_pivot_raw(),
         on_drift="stop",
     )
-    assert set(res.tables["by_industry"]["period"]) == {"2024-1"}
+    assert set(res.tables["by_industry"]["version"]) == {"2024Q1"}
     assert "f_2024Q2.xlsx" in res.drift_by_file
+
+
+def test_consolidate_progress_events_ok():
+    sp = _spec()
+    sheet_name = str(sp.sheets[0].sheet_match.value)
+    events = []
+    res = consolidate(
+        ["f_2024Q1.xlsx", "f_2024Q2.xlsx"], sp,
+        list_sheets_fn=lambda p: [type("S", (), {"name": sheet_name})()],
+        sheet_extractor=lambda p, s: sample_grid(),
+        pivot_extractor=lambda p, s, n: sample_pivot_raw(),
+        progress=events.append,
+    )
+    assert list(res.tables)
+    assert [e["event"] for e in events] == ["file_start", "file_done", "file_start", "file_done"]
+    assert [(e["index"], e["total"]) for e in events] == [(1, 2), (1, 2), (2, 2), (2, 2)]
+    done = [e for e in events if e["event"] == "file_done"]
+    assert [e["status"] for e in done] == ["ok", "ok"]
+    assert all(e["rows"] > 0 for e in done)
+    assert all(e["versions"] for e in done)
+
+
+def test_consolidate_progress_events_drift_skip():
+    sp = _spec()
+    sheet_name = str(sp.sheets[0].sheet_match.value)
+    bad = sample_grid()
+    bad.cells = [c for c in bad.cells if not (c.row == 5 and c.col == 3)]
+    bad.cells.append(Cell(row=5, col=3, value="?됰슧"))
+    events = []
+    res = consolidate(
+        ["f_2024Q1.xlsx"], sp,
+        list_sheets_fn=lambda p: [type("S", (), {"name": sheet_name})()],
+        sheet_extractor=lambda p, s: bad,
+        pivot_extractor=lambda p, s, n: sample_pivot_raw(),
+        on_drift="stop",
+        progress=events.append,
+    )
+    assert res.tables == {}
+    assert [e["event"] for e in events] == ["file_start", "file_done"]
+    done = events[-1]
+    assert done["status"] == "drift_skip"
+    assert done["rows"] == 0
+    assert done["issues"]

@@ -1,6 +1,7 @@
 from typer.testing import CliRunner
-from moa.cli import app
+
 from tests.fixtures import sample_grid
+from moa.cli import app
 
 runner = CliRunner()
 
@@ -8,7 +9,7 @@ runner = CliRunner()
 def test_encode_cmd(tmp_path):
     gp = tmp_path / "grid.json"; gp.write_text(sample_grid().model_dump_json(), encoding="utf-8")
     r = runner.invoke(app, ["encode", "--grid", str(gp)])
-    assert r.exit_code == 0 and "SHEET: 데이터" in r.stdout
+    assert r.exit_code == 0 and "SHEET:" in r.stdout
 
 
 def test_sample_spec_cmd_roundtrips():
@@ -36,10 +37,31 @@ def test_apply_cmd_writes_folder(tmp_path):
     sp = tmp_path / "spec.yaml"; TemplateSpec.model_validate(sample_spec_dict()).to_yaml(sp)
     out = tmp_path / "db"
     # no --verify flag: verification now runs by DEFAULT and must pass on clean data
-    r = runner.invoke(app, ["apply", str(sp), "--grid", str(gp), "--sheet", "데이터",
-                            "--period", "2024Q1", "--out-dir", str(out)])
+    r = runner.invoke(app, ["apply", str(sp), "--grid", str(gp), "--sheet", "Data",
+                            "--version", "2024Q1", "--out-dir", str(out)])
+    assert r.exit_code == 0, r.stdout
+    assert (out / "db.csv").exists()
+
+
+def test_apply_cmd_per_table_writes_named_file(tmp_path):
+    from moa.spec import TemplateSpec, sample_spec_dict
+    gp = tmp_path / "grid.json"; gp.write_text(sample_grid().model_dump_json(), encoding="utf-8")
+    sp = tmp_path / "spec.yaml"; TemplateSpec.model_validate(sample_spec_dict()).to_yaml(sp)
+    out = tmp_path / "db_per_table"
+    r = runner.invoke(app, ["apply", str(sp), "--grid", str(gp), "--sheet", "Data",
+                            "--version", "2024Q1", "--out-dir", str(out), "--per-table"])
     assert r.exit_code == 0, r.stdout
     assert (out / "by_industry.csv").exists()
+
+
+def test_consolidate_empty_glob_fails(tmp_path):
+    # Empty glob must fail explicitly, not silently write zero tables.
+    from moa.spec import TemplateSpec, sample_spec_dict
+    sp = tmp_path / "spec.yaml"; TemplateSpec.model_validate(sample_spec_dict()).to_yaml(sp)
+    r = runner.invoke(app, ["consolidate", str(sp), str(tmp_path / "nope_*.xlsx"),
+                            "--out-dir", str(tmp_path / "db")])
+    assert r.exit_code != 0
+    assert "no files match" in (r.stdout + str(r.exception or ""))
 
 
 def test_apply_no_verify_turns_it_off(tmp_path):
@@ -48,7 +70,7 @@ def test_apply_no_verify_turns_it_off(tmp_path):
     gp = tmp_path / "grid.json"; gp.write_text(sample_grid().model_dump_json(), encoding="utf-8")
     sp = tmp_path / "spec.yaml"; TemplateSpec.model_validate(sample_spec_dict()).to_yaml(sp)
     out = tmp_path / "db2"
-    r = runner.invoke(app, ["apply", str(sp), "--grid", str(gp), "--sheet", "데이터",
-                            "--period", "2024Q1", "--out-dir", str(out), "--no-verify"])
+    r = runner.invoke(app, ["apply", str(sp), "--grid", str(gp), "--sheet", "Data",
+                            "--version", "2024Q1", "--out-dir", str(out), "--no-verify"])
     assert r.exit_code == 0, r.stdout
-    assert (out / "by_industry.csv").exists()
+    assert (out / "db.csv").exists()

@@ -20,11 +20,30 @@ from ._xl import open_book
 # Label extraction still uses PivotCell.RowItems/.ColumnItems per the contract.
 
 
+def _flatten_values(raw, count: int) -> list:
+    """Range.Value 결과를 행 우선 1차원 리스트로. 단일 셀이면 스칼라가 온다."""
+    if count == 1 and not isinstance(raw, (list, tuple)):
+        return [raw]
+    return [v for row in raw for v in (row if isinstance(row, (list, tuple)) else (row,))]
+
+
 def _safe_name(obj) -> str:
     try:
         return str(obj.Name)
     except Exception:
         return "?"
+
+
+def _cell_df_name(pc) -> str | None:
+    """데이터 셀이 속한 데이터 필드 이름. PivotCell.DataField 가 정답이고
+    (이 빌드에서 실측 확인), 없으면 PivotField 로 폴백(데이터 영역 셀에선 동일)."""
+    try:
+        return str(pc.DataField.Name)
+    except Exception:
+        try:
+            return str(pc.PivotField.Name)
+        except Exception:
+            return None
 
 
 def _coll(accessor):
@@ -117,24 +136,54 @@ def pivot_from_sheet(wb, sheet: str | int, pivot_name: str | None = None,
     # 카운트/본문은 필터 해제 후 상태로 읽는다
     data_fields = [pt.DataFields.Item(i + 1).SourceName
                    for i in range(pt.DataFields.Count)]
+    first_df_names: set[str] | None = None
     if pt.DataFields.Count > 1:
-        # v1: 단일 데이터 필드만. 다중은 명시적으로 알리고 첫 필드만.
+        # v1: 단일 데이터 필드만. 다중이면 첫 필드 소속 셀만 통과시킨다
+        # (필터 없이 순회하면 두 필드의 값이 구분 없이 섞여 들어간다).
         print(f"[moa] WARNING: pivot has {pt.DataFields.Count} data fields "
-              f"{data_fields}; v1 uses the first only.")
+              f"{data_fields}; v1 keeps the FIRST only — other fields' cells are "
+              f"skipped. Result may be incomplete; prefer single-data-field pivots.")
+        df1 = pt.DataFields.Item(1)
+        first_df_names = {str(df1.Name)}
+        try:
+            first_df_names.add(str(df1.SourceName))
+        except Exception:
+            pass
 
     n_row_fields = int(pt.RowFields.Count)
     n_col_fields = int(pt.ColumnFields.Count)
+    if pt.DataFields.Count > 1:
+        # 다중 데이터 필드면 "Σ값" 의사필드가 행/열 축에 끼어 Count 를 1 올리지만,
+        # PivotCell.RowItems/ColumnItems 에는 데이터 필드 항목이 빠진다(실측).
+        # 보정하지 않으면 구조 판별이 모든 데이터 셀을 소계로 오인해 스킵한다.
+        try:
+            ori = int(pt.DataPivotField.Orientation)
+            if ori == 1:    # xlRowField
+                n_row_fields -= 1
+            elif ori == 2:  # xlColumnField
+                n_col_fields -= 1
+        except Exception:
+            pass
 
     records: list[dict] = []
     grand_total: float | None = None
-    body = pt.DataBodyRange
+    body = pt.DataBodyRange  # 값이 하나도 없는 피벗이면 None
+    if body is None:
+        return pd.DataFrame({"value": pd.Series(dtype=float)}), None
+    # 본문 값은 1회 일괄 전송으로 읽는다. Range.Cells(i)와 Range.Value 의 평탄화
+    # 순서는 둘 다 행 우선(row-major)이라 인덱스가 일치한다. PivotCell(라벨)은
+    # 셀별 COM 접근이 불가피하지만, 값까지 셀별로 읽는 왕복은 이렇게 없앤다.
+    body_values = _flatten_values(body.Value, int(body.Count))
     for i in range(1, body.Count + 1):
         cell = body.Cells(i)
         pc = cell.PivotCell
+        if first_df_names is not None and _cell_df_name(pc) not in first_df_names:
+            continue  # 다른 데이터 필드의 셀
         ric = pc.RowItems.Count
         cic = pc.ColumnItems.Count
         if ric == 0 and cic == 0:
-            grand_total = float(cell.Value) if cell.Value is not None else grand_total
+            v = body_values[i - 1]
+            grand_total = float(v) if v is not None else grand_total
             continue  # 총합계 스킵
         if ric != n_row_fields or cic != n_col_fields:
             continue  # 소계 스킵 (행/열 필드 수보다 항목이 적음)
@@ -149,13 +198,12 @@ def pivot_from_sheet(wb, sheet: str | int, pivot_name: str | None = None,
             col_label = name if col_label is None else f"{col_label}/{name}"
         if col_label is not None:
             rec["field"] = col_label
-        rec["value"] = cell.Value
+        rec["value"] = body_values[i - 1]
         records.append(rec)
 
     frame = pd.DataFrame.from_records(records)
-    # 행필드 이름 정규화: 한국어 헤더 그대로 둠. 호출측이 사용.
-    if "지역" in frame.columns:
-        frame = frame.rename(columns={"지역": "region"})
+    if "value" not in frame.columns:  # 모든 셀이 스킵된 경우(빈/전부 소계)
+        frame["value"] = pd.Series(dtype=float)
     return frame, grand_total
 
 

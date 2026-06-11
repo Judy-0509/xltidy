@@ -24,14 +24,14 @@ def _norm(v):
 
 
 def verify_table(grid: CellGrid, table: TableSpec, frame: pd.DataFrame, *,
-                 period: str | None, sample: int | None = 50, seed: int = 0) -> list[str]:
+                 version: str | None, sample: int | None = 50, seed: int = 0) -> list[str]:
     """Independent output verification for a kind=table extraction.
 
     Two checks, both useful even when the sheet has no subtotals (reconcile
     can't help there):
       1. count check       -- len(frame) == (#data rows excl. subtotals) x (#value cols)
       2. sample round-trip -- pick `sample` source value-cells at random and assert
-         each landed in the output as a row with the right (dims, metric, period,
+         each landed in the output as a row with the right (dims, metric, version,
          value). Uses a multiset (Counter) so **duplicate index labels** (e.g. a
          vertically merged category spanning rows) are handled correctly rather
          than collapsing. sample=None (or <=0) verifies every cell.
@@ -61,7 +61,7 @@ def verify_table(grid: CellGrid, table: TableSpec, frame: pd.DataFrame, *,
                       f"(data_rows={len(data_rows)} x value_cols={len(vb)})")
 
     # Multiset of full output rows; membership handles duplicate dimension keys.
-    var, valn, pern = table.unpivot.var_name, table.unpivot.value_name, table.period.name
+    var, valn, pern = table.unpivot.var_name, table.unpivot.value_name, table.version.name
     actual: Counter = Counter(
         (tuple(_norm(rec.get(name)) for _, name in idx_cols),
          _norm(rec.get(var)), _norm(rec.get(pern)), _norm(rec.get(valn)))
@@ -75,7 +75,7 @@ def verify_table(grid: CellGrid, table: TableSpec, frame: pd.DataFrame, *,
     mism = 0
     for r, vc in pairs:
         exp = (tuple(_norm(grid.value_filled(r, ci)) for ci, _ in idx_cols),
-               _norm(_metric_name(table, header_row, vc)), _norm(period),
+               _norm(_metric_name(table, header_row, vc)), _norm(version),
                _norm(grid.at(r, vc)))
         if actual.get(exp, 0) <= 0:
             mism += 1
